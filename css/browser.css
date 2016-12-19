@@ -1,0 +1,22 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  overflow: hidden;
+}
+
+#draghandle {
+  -webkit-app-region: drag;
+  height: 10px;
+}
+
+.runtime-context {
+  height: 25px;
+  padding: 3px 10px;
+  background: linear-gradient(to bottom, #ddd 90%, #bbb);
+  color: #555;
+  font-size: smaller;
+}
+
+.runtime-context>table {
+  width: 100%;
+}
