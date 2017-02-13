@@ -4,9 +4,14 @@ const {
     ipcMain
 } = require('electron'),
     crypto = require('crypto'),
-    inter_proc_ipc = require('node-ipc');
+    inter_proc_ipc = require('node-ipc'),
+    mainDbApi = require(__dirname + '/libs/main-db-api'),
+    winStateUpdator = require(__dirname + '/libs/state-updator');
+
+const mainWindowId = 'main-window';
 
 let mainWindow = null;
+let mainDB, stateUpdator;
 
 if (process.env.SOCKS5_ADDRESS) {
     app.commandLine.appendSwitch('proxy-server', 'socks5://' + process.env.SOCKS5_ADDRESS + ':' + process.env.SOCKS5_PORT);
@@ -27,9 +32,13 @@ app.on('window-all-closed', function() {
         pid: process.pid,
         started: false
     });
-    if (process.platform != 'darwin') {
-        app.quit();
-    }
+    stateUpdator.flush().then(() => {
+        return mainDB.close().then(() => {
+            if (process.platform != 'darwin') {
+                app.quit();
+            }
+        });
+    });
 });
 
 const register_app = () => {
@@ -59,13 +68,22 @@ const register_app = () => {
     });
 };
 
-app.on('ready', () => {
-    register_app();
-    mainWindow = new BrowserWindow({
-        width: 1530,
-        height: 920,
+const flashPath = app.getPath('pepperFlashSystemPlugin');
+if (flashPath) {
+    app.commandLine.appendSwitch('ppapi-flash-path', flashPath);
+}
+
+const createWindow = (initBounds) => {
+    const wopts = {
+        width: initBounds ? initBounds.width : 1530,
+        height: initBounds ? initBounds.height : 920,
         frame: false
-    });
+    };
+    if (initBounds) {
+        wopts.x = initBounds.loc_x;
+        wopts.y = initBounds.loc_y;
+    }
+    mainWindow = new BrowserWindow(wopts);
     //mainWindow.openDevTools();
     mainWindow.loadURL('file://' + require('path').join(__dirname, 'browser.html'));
     mainWindow.webContents.on('did-finish-load', () => {
@@ -80,7 +98,40 @@ app.on('ready', () => {
         }
         mainWindow.webContents.send('runtime-context-update', copts);
     });
+    mainWindow.on('resize', () => {
+        stateUpdator.updateWindowState(mainWindowId, {
+            bounds: mainWindow.getBounds()
+        })
+    });
+    mainWindow.on('move', () => {
+        stateUpdator.updateWindowState(mainWindowId, {
+            bounds: mainWindow.getBounds()
+        })
+    });
+    mainWindow.on('enter-full-screen', () => {
+
+    });
+    mainWindow.on('leave-full-screen', () => {
+
+    });
     mainWindow.on('closed', () => {
         mainWindow = null;
+    });
+};
+
+app.on('ready', () => {
+    register_app();
+    mainDB = new mainDbApi({
+        home: app.getPath('appData'),
+        path: app.getName() + '/databases'
+    });
+    mainDB.open().then(() => {
+        stateUpdator = new winStateUpdator(mainDB);
+        mainDB.find({
+            table: 'window-states',
+            predicate: '"window_id"=\'' + mainWindowId + '\''
+        }).then((wstate) => {
+            createWindow(wstate);
+        });
     });
 });
