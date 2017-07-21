@@ -1,3 +1,7 @@
+'use strict';
+
+import React from 'react';
+
 const max_title_size = 30;
 
 const short_title = title => {

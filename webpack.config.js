@@ -38,6 +38,5 @@ module.exports = {
             } // inline base64 URLs for <=8k images, direct URLs for the rest
         ]
     },
-    plugins: [
-    ]
+    plugins: []
 };

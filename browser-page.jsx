@@ -1,3 +1,5 @@
+import React from 'react';
+
 const pathlib = require('path');
 
 const BrowserPageSearch = React.createClass({

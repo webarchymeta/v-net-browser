@@ -1,13 +1,33 @@
 'use strict'
 
+import React from 'react';
+import ReactDOM from 'react-dom';
 import BrowserTabs from './browser-tabs.jsx';
 import BrowserNavbar from './browser-navbar.jsx';
 import BrowserPage from './browser-page.jsx';
 
-const {remote, ipcRenderer} = require('electron');
-const {Menu, MenuItem, clipboard} = remote;
+const { remote, ipcRenderer } = require('electron');
+const { Menu, MenuItem, clipboard } = remote;
 
-var urllib = require('url');
+const ifaces = require('os').networkInterfaces();
+const subnets = [];
+Object.keys(ifaces).forEach(key => {
+    ifaces[key].forEach(ip => {
+        if (!ip.internal && 'ipv4' === ip.family.toLowerCase()) {
+            subnets.push(ip.address.substr(0, ip.address.lastIndexOf('.') + 1));
+        }
+    });
+});
+
+const mdns = new (require('multicast-dns'))({
+    port: 0,
+    subnets: subnets,
+    loopback: false
+});
+
+const urllib = require('url');
+
+const onenet_gateway_url_pattern = /\.gw-master\.local\s*$/i;
 
 function createPageObject(location, frameName) {
     return {
@@ -30,13 +50,13 @@ ipcRenderer.on('runtime-context-update', (e, context) => {
 });
 
 var BrowserChrome = React.createClass({
-    getInitialState: function() {
+    getInitialState: function () {
         return {
             pages: [createPageObject()],
             currentPageIndex: 0
         };
     },
-    componentWillMount: function() {
+    componentWillMount: function () {
         window.__frame_element = this;
         // bind handlers to this object
         for (var k in this.tabHandlers)
@@ -46,7 +66,7 @@ var BrowserChrome = React.createClass({
         for (var k in this.pageHandlers)
             this.pageHandlers[k] = this.pageHandlers[k].bind(this);
     },
-    componentDidMount: function() {
+    componentDidMount: function () {
         // attach webview events
         for (var k in this.webviewHandlers)
             this.getWebView().addEventListener(k, this.webviewHandlers[k].bind(this));
@@ -54,7 +74,7 @@ var BrowserChrome = React.createClass({
         // attach keyboard shortcuts
         // :TODO: replace this with menu hotkeys
         var self = this;
-        document.body.addEventListener('keydown', function(e) {
+        document.body.addEventListener('keydown', function (e) {
             if (e.metaKey && e.keyCode == 70) { // cmd+f
                 // start search
                 self.getPageObject().isSearching = true;
@@ -70,213 +90,263 @@ var BrowserChrome = React.createClass({
         });
     },
 
-    getWebView: function(i) {
+    getWebView: function (i) {
         i = (typeof i == 'undefined') ? this.state.currentPageIndex : i;
         return this.refs['page-' + i].refs.webview;
     },
-    getPage: function(i) {
+    getPage: function (i) {
         i = (typeof i == 'undefined') ? this.state.currentPageIndex : i;
         return this.refs['page-' + i];
     },
-    getPageObject: function(i) {
+    getPageObject: function (i) {
         i = (typeof i == 'undefined') ? this.state.currentPageIndex : i;
         return this.state.pages[i];
     },
 
-    createTab: function(location, frameName) {
+    createTab: function (location, frameName) {
         this.state.pages.push(createPageObject(location, frameName));
         this.setState({ pages: this.state.pages, currentPageIndex: this.state.pages.length - 1 });
     },
-    closeTab: function(pageIndex) {
+    closeTab: function (pageIndex) {
         // last tab, full reset
         if (this.state.pages.filter(Boolean).length == 1)
-            return this.setState({ pages: [createPageObject()], currentPageIndex: 0 })
+            return this.setState({ pages: [createPageObject()], currentPageIndex: 0 });
 
-        this.state.pages[pageIndex] = null
-        this.setState({ pages: this.state.pages })
+        this.state.pages[pageIndex] = null;
+        this.setState({ pages: this.state.pages });
 
         // find the nearest adjacent page to make active
         if (this.state.currentPageIndex == pageIndex) {
             for (var i = pageIndex; i >= 0; i--) {
                 if (this.state.pages[i])
-                    return this.setState({ currentPageIndex: i })
+                    return this.setState({ currentPageIndex: i });
             }
             for (var i = pageIndex; i < this.state.pages.length; i++) {
                 if (this.state.pages[i])
-                    return this.setState({ currentPageIndex: i })
+                    return this.setState({ currentPageIndex: i });
             }
         }
     },
-    tabContextMenu: function(pageIndex) {
-        var self = this
-        var menu = new Menu()
-        menu.append(new MenuItem({ label: 'New Tab', click: function() { self.createTab() } }))
-        menu.append(new MenuItem({ label: 'Duplicate', click: function() { self.createTab(self.getPageObject(pageIndex).location) } }))
-        menu.append(new MenuItem({ type: 'separator' }))
-        menu.append(new MenuItem({ label: 'Close Tab', click: function() { self.closeTab(pageIndex) } }))
-        menu.popup(remote.getCurrentWindow())
+    tabContextMenu: function (pageIndex) {
+        var self = this;
+        var menu = new Menu();
+        menu.append(new MenuItem({ label: 'New Tab', click: function () { self.createTab() } }));
+        menu.append(new MenuItem({ label: 'Duplicate', click: function () { self.createTab(self.getPageObject(pageIndex).location) } }));
+        menu.append(new MenuItem({ type: 'separator' }));
+        menu.append(new MenuItem({ label: 'Close Tab', click: function () { self.closeTab(pageIndex) } }));
+        menu.popup(remote.getCurrentWindow());
     },
-    locationContextMenu: function(el) {
-        var self = this
-        var menu = new Menu()
+    locationContextMenu: function (el) {
+        var self = this;
+        var menu = new Menu();
         menu.append(new MenuItem({
-            label: 'Copy', click: function() {
+            label: 'Copy', click: function () {
                 clipboard.writeText(el.value)
             }
-        }))
+        }));
         menu.append(new MenuItem({
-            label: 'Cut', click: function() {
-                clipboard.writeText(el.value.slice(el.selectionStart, el.selectionEnd))
-                self.getPageObject().location = el.value.slice(0, el.selectionStart) + el.value.slice(el.selectionEnd)
+            label: 'Cut', click: function () {
+                clipboard.writeText(el.value.slice(el.selectionStart, el.selectionEnd));
+                self.getPageObject().location = el.value.slice(0, el.selectionStart) + el.value.slice(el.selectionEnd);
             }
-        }))
+        }));
         menu.append(new MenuItem({
-            label: 'Paste', click: function() {
-                var l = el.value.slice(0, el.selectionStart) + clipboard.readText() + el.value.slice(el.selectionEnd)
-                self.getPageObject().location = l
+            label: 'Paste', click: function () {
+                var l = el.value.slice(0, el.selectionStart) + clipboard.readText() + el.value.slice(el.selectionEnd);
+                self.getPageObject().location = l;
             }
-        }))
+        }));
         menu.append(new MenuItem({
-            label: 'Paste and Go', click: function() {
-                var l = el.value.slice(0, el.selectionStart) + clipboard.readText() + el.value.slice(el.selectionEnd)
-                self.getPageObject().location = l
-                self.getPage().navigateTo(l)
+            label: 'Paste and Go', click: function () {
+                var l = el.value.slice(0, el.selectionStart) + clipboard.readText() + el.value.slice(el.selectionEnd);
+                self.getPageObject().location = l;
+                self.getPage().navigateTo(l);
             }
         }))
         menu.popup(remote.getCurrentWindow())
     },
-    webviewContextMenu: function(e) {
-        var self = this
-        var menu = new Menu()
+    webviewContextMenu: function (e) {
+        var self = this;
+        var menu = new Menu();
         if (e.href) {
-            menu.append(new MenuItem({ label: 'Open Link in New Tab', click: function() { self.createTab(e.href) } }))
-            menu.append(new MenuItem({ label: 'Copy Link Address', click: function() { clipboard.writeText(e.href) } }))
+            menu.append(new MenuItem({ label: 'Open Link in New Tab', click: function () { self.createTab(e.href) } }));
+            menu.append(new MenuItem({ label: 'Copy Link Address', click: function () { clipboard.writeText(e.href) } }));
         }
         if (e.img) {
-            menu.append(new MenuItem({ label: 'Save Image As...', click: function() { alert('todo') } }))
-            menu.append(new MenuItem({ label: 'Copy Image URL', click: function() { clipboard.writeText(e.img) } }))
-            menu.append(new MenuItem({ label: 'Open Image in New Tab', click: function() { self.createTab(e.img) } }))
+            menu.append(new MenuItem({ label: 'Save Image As...', click: function () { alert('todo') } }));
+            menu.append(new MenuItem({ label: 'Copy Image URL', click: function () { clipboard.writeText(e.img) } }));
+            menu.append(new MenuItem({ label: 'Open Image in New Tab', click: function () { self.createTab(e.img) } }));
         }
         if (e.hasSelection)
-            menu.append(new MenuItem({ label: 'Copy', click: function() { self.getWebView().copy() } }))
-        menu.append(new MenuItem({ label: 'Select All', click: function() { self.getWebView().selectAll() } }))
-        menu.append(new MenuItem({ type: 'separator' }))
+            menu.append(new MenuItem({ label: 'Copy', click: function () { self.getWebView().copy() } }));
+        menu.append(new MenuItem({ label: 'Select All', click: function () { self.getWebView().selectAll() } }));
+        menu.append(new MenuItem({ type: 'separator' }));
         menu.append(new MenuItem({
-            label: 'Inspect Element', click: function() {
+            label: 'Inspect Element', click: function () {
                 if (window.currentContextMenuPos) {
                     self.getWebView().inspectElement(window.currentContextMenuPos.x, window.currentContextMenuPos.y);
                 }
             }
-        }))
-        menu.popup(remote.getCurrentWindow())
+        }));
+        menu.popup(remote.getCurrentWindow());
     },
-
     tabHandlers: {
-        onNewTab: function() {
-            this.createTab()
+        onNewTab: function () {
+            this.createTab();
         },
-        onTabClick: function(e, page, pageIndex) {
-            this.setState({ currentPageIndex: pageIndex })
+        onTabClick: function (e, page, pageIndex) {
+            this.setState({ currentPageIndex: pageIndex });
         },
-        onTabContextMenu: function(e, page, pageIndex) {
-            this.tabContextMenu(pageIndex)
+        onTabContextMenu: function (e, page, pageIndex) {
+            this.tabContextMenu(pageIndex);
         },
-        onTabClose: function(e, page, pageIndex) {
-            this.closeTab(pageIndex)
+        onTabClose: function (e, page, pageIndex) {
+            this.closeTab(pageIndex);
         },
-        onMaximize: function() {
+        onMaximize: function () {
             if (remote.getCurrentWindow())
-                remote.getCurrentWindow().maximize()
+                remote.getCurrentWindow().maximize();
             else
-                remote.unmaximize()
+                remote.unmaximize();
         },
-        onMinimize: function() {
-            remote.getCurrentWindow().minimize()
+        onMinimize: function () {
+            remote.getCurrentWindow().minimize();
         },
-        onClose: function() {
-            remote.getCurrentWindow().close()
+        onClose: function () {
+            remote.getCurrentWindow().close();
         }
     },
     navHandlers: {
-        onClickHome: function() {
-            this.getWebView().goToIndex(0)
+        onClickHome: function () {
+            this.getWebView().goToIndex(0);
         },
-        onClickBack: function() {
-            this.getWebView().goBack()
+        onClickBack: function () {
+            this.getWebView().goBack();
         },
-        onClickForward: function() {
-            this.getWebView().goForward()
+        onClickForward: function () {
+            this.getWebView().goForward();
         },
-        onClickRefresh: function() {
-            this.getWebView().reload()
+        onClickRefresh: function () {
+            this.getWebView().reload();
         },
-        onClickBundles: function() {
-            var location = urllib.parse(this.getWebView().getURL()).path
-            this.getPage().navigateTo('/bundles/view.html#' + location)
+        onClickBundles: function () {
+            var location = urllib.parse(this.getWebView().getURL()).path;
+            this.getPage().navigateTo('/bundles/view.html#' + location);
         },
-        onClickVersions: function() {
-            var location = urllib.parse(this.getWebView().getURL()).path
-            this.getPage().navigateTo('/bundles/versions.html#' + location)
+        onClickVersions: function () {
+            var location = urllib.parse(this.getWebView().getURL()).path;
+            this.getPage().navigateTo('/bundles/versions.html#' + location);
         },
         onClickSync: console.log.bind(console, 'sync'),
-        onEnterLocation: function(location) {
-            this.getPage().navigateTo(location)
+        onEnterLocation: function (location) {
+            if (location.match(onenet_gateway_url_pattern)) {
+                const url = urllib.parse(location);
+                if (url.hostname.match(onenet_gateway_url_pattern)) {
+                    const question = {
+                        type: 'SRV',
+                        name: url.hostname
+                    };
+                    const mdns = new mdnsAPI({
+                        port: 0,
+                        subnets: subnets,
+                        loopback: false
+                    });
+                    let __timeout = setTimeout(() => {
+                        mdns.destroy();
+                        mdns.removeListener('response', res_handler);
+                        this.getPage().navigateTo(location);
+                        __timeout = undefined;
+                    }, 1000);
+                    const res_handler = res => {
+                        if (res.type === 'response') {
+                            if (res.questions.length > 0 && res.questions[0].type === question.type && res.questions[0].name === question.name) {
+                                mdns.destroy();
+                                setTimeout(() => {
+                                    mdns.removeListener('response', res_handler);
+                                }, 100);
+                                if (res.answers && res.answers.length > 0 || res.additionals && res.additionals.length > 0) {
+                                    if (__timeout) {
+                                        clearTimeout(__timeout);
+                                        __timeout = undefined;
+                                    }
+                                    url.hostname = res.answers[0].data.target;
+                                    url.port = res.answers[0].data.part;
+                                    if (url.hostname.indexOf(',') > -1) {
+                                        url.hostname = url.hostname.substr(0, socks_ip.indexOf(','));
+                                    }
+                                    this.getPage().navigateTo(urllib.format(url));
+                                }
+                            } else {
+                                this.getPage().navigateTo(location);
+                            }
+                        }
+                    };
+                    mdns.on('response', res_handler);
+                    mdns.query({
+                        questions: [question]
+                    });
+                } else {
+                    this.getPage().navigateTo(location);
+                }
+            } else {
+                this.getPage().navigateTo(location);
+            }
         },
-        onChangeLocation: function(location) {
-            var page = this.getPageObject()
-            page.location = location
-            this.setState(this.state)
+        onChangeLocation: function (location) {
+            var page = this.getPageObject();
+            page.location = location;
+            this.setState(this.state);
         },
-        onLocationContextMenu: function(e) {
-            this.locationContextMenu(e.target)
+        onLocationContextMenu: function (e) {
+            this.locationContextMenu(e.target);
         }
     },
     pageHandlers: {
-        onDidStartLoading: function(e, page) {
-            page.isLoading = true
-            page.title = false
-            this.setState(this.state)
+        onDidStartLoading: function (e, page) {
+            page.isLoading = true;
+            page.title = false;
+            this.setState(this.state);
         },
-        onDomReady: function(e, page, pageIndex) {
-            var webview = this.getWebView(pageIndex)
-            page.canGoBack = webview.canGoBack()
-            page.canGoForward = webview.canGoForward()
-            page.canRefresh = true
-            this.setState(this.state)
+        onDomReady: function (e, page, pageIndex) {
+            var webview = this.getWebView(pageIndex);
+            page.canGoBack = webview.canGoBack();
+            page.canGoForward = webview.canGoForward();
+            page.canRefresh = true;
+            this.setState(this.state);
         },
-        onDidStopLoading: function(e, page, pageIndex) {
+        onDidStopLoading: function (e, page, pageIndex) {
             // update state
-            var webview = this.getWebView(pageIndex)
-            page.statusText = false
-            page.location = webview.getURL()
-            page.canGoBack = webview.canGoBack()
-            page.canGoForward = webview.canGoForward()
+            var webview = this.getWebView(pageIndex);
+            page.statusText = false;
+            page.location = webview.getURL();
+            page.canGoBack = webview.canGoBack();
+            page.canGoForward = webview.canGoForward();
             if (!page.title)
-                page.title = page.location
-            page.isLoading = false
-            this.setState(this.state)
+                page.title = page.location;
+            page.isLoading = false;
+            this.setState(this.state);
         },
-        onPageTitleSet: function(e) {
-            var page = this.getPageObject()
-            page.title = e.title
-            page.location = this.getWebView().getURL()
-            this.setState(this.state)
+        onPageTitleSet: function (e) {
+            var page = this.getPageObject();
+            page.title = e.title;
+            page.location = this.getWebView().getURL();
+            this.setState(this.state);
         },
-        onContextMenu: function(e, page, pageIndex) {
+        onContextMenu: function (e, page, pageIndex) {
             let pageIndx = typeof pageIndex === 'number' ? pageIndex : undefined;
             window.currentContextMenuPos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
             this.getWebView(pageIndx).send('get-contextmenu-data', window.currentContextMenuPos);
         },
-        onIpcMessage: function(e, page) {
+        onIpcMessage: function (e, page) {
             if (e.channel == 'status') {
-                page.statusText = e.args[0]
-                this.setState(this.state)
+                page.statusText = e.args[0];
+                this.setState(this.state);
             }
             else if (e.channel == 'contextmenu-data') {
-                this.webviewContextMenu(e.args[0])
+                this.webviewContextMenu(e.args[0]);
             }
         },
-        onOpenNewWindow: function(e, page, pageIndex) {
+        onOpenNewWindow: function (e, page, pageIndex) {
             if (!e.frameName || e.frameName === '_plain') {
                 this.createTab(e.url);
             } else {
@@ -292,12 +362,12 @@ var BrowserChrome = React.createClass({
             }
         }
     },
-    render: function() {
-        var self = this
+    render: function () {
+        const self = this;
         return <div>
             <BrowserTabs ref="tabs" pages={this.state.pages} currentPageIndex={this.state.currentPageIndex} {...this.tabHandlers} />
             <BrowserNavbar ref="navbar" {...this.navHandlers} page={this.state.pages[this.state.currentPageIndex]} />
-            {this.state.pages.map(function(page, i) {
+            {this.state.pages.map((page, i) => {
                 if (!page)
                     return
                 return <BrowserPage ref={'page-' + i} key={'page-' + i} {...self.pageHandlers} page={page} pageIndex={i} isActive={i == self.state.currentPageIndex} />
