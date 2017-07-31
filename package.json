@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "electron": "^1.6.1",
-    "multicast-dns": "file:///Z:\\Develop\\CryptoGateway\\Web\\NodeJsServices\\MembershipPlus\\publications\\multicast-dns",
+    "multicast-dns": "git+https://github.com/webarchymeta/multicast-dns.git",
     "node-ipc": "^8.9.2"
   }
 }

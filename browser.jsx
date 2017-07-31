@@ -249,7 +249,8 @@ var BrowserChrome = React.createClass({
                     const mdns = new mdnsAPI({
                         port: 0,
                         subnets: subnets,
-                        loopback: false
+                        loopback: false,
+                        client_only
                     });
                     let __timeout = setTimeout(() => {
                         mdns.destroy();

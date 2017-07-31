@@ -30,17 +30,14 @@ if (process.env.SOCKS5_ADDRESS) {
             const mdns = new(require('multicast-dns'))({
                 port: 0,
                 subnets: subnets,
-                loopback: false
+                loopback: false,
+                use_group_ip: false,
+                client_only: true
             });
             const question = {
                 type: 'SRV',
                 name: process.env.SOCKS5_ADDRESS
             };
-            const mdns = new mdnsAPI({
-                port: 0,
-                subnets: subnets,
-                loopback: false
-            });
             const __timeout = setTimeout(() => {
                 mdns.destroy();
                 mdns.removeListener('response', res_handler);
@@ -80,8 +77,10 @@ if (process.env.SOCKS5_ADDRESS) {
                 }
             };
             mdns.on('response', res_handler);
-            mdns.query({
-                questions: [question]
+            mdns.on('ready', () => {
+                mdns.query({
+                    questions: [question]
+                });
             });
         });
     } else {
@@ -89,10 +88,10 @@ if (process.env.SOCKS5_ADDRESS) {
         if (!process.env.SOCKS5_LOCAL_DNS) {
             app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + process.env.SOCKS5_ADDRESS);
         }
-        gateway_resolve_task = Promise.reslove();
+        gateway_resolve_task = Promise.resolve();
     }
 } else {
-    gateway_resolve_task = Promise.reslove();
+    gateway_resolve_task = Promise.resolve();
 }
 
 gateway_resolve_task.then(() => {
