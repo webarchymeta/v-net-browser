@@ -1,181 +1,149 @@
 const {
-    BrowserWindow,
     app,
-    ipcMain
+    Menu,
+    MenuItem,
+    Tray
 } = require('electron'),
     path = require('path'),
-    app_register = require(__dirname + '/libs/app-register'),
-    mainDbApi = require(__dirname + '/libs/main-db-api'),
-    winStateUpdator = require(__dirname + '/libs/state-updator');
+    child_proc = require('child_process');
 
-const mainWindowId = 'main-window';
+const refresh_seconds = 10;
 
-let mainWindow = null;
-let mainDB, stateUpdator;
-let gateway_resolve_task;
-
-if (process.env.SOCKS5_ADDRESS) {
-    const onenet_port_url_pattern = /\.gw-port\.local\s*$/i;
-    if (process.env.SOCKS5_ADDRESS.match(onenet_port_url_pattern)) {
-        gateway_resolve_task = new Promise((resolve, reject) => {
-            const ifaces = require('os').networkInterfaces();
-            const subnets = [];
-            Object.keys(ifaces).forEach(key => {
-                ifaces[key].forEach(ip => {
-                    if (!ip.internal && 'ipv4' === ip.family.toLowerCase()) {
-                        subnets.push(ip.address.substr(0, ip.address.lastIndexOf('.') + 1));
-                    }
-                });
-            });
-            const mdns = new(require('multicast-dns'))({
-                port: 0,
-                subnets: subnets,
-                loopback: false,
-                use_group_ip: false,
-                client_only: true
-            });
-            const question = {
-                type: 'SRV',
-                name: process.env.SOCKS5_ADDRESS
-            };
-            const __timeout = setTimeout(() => {
-                mdns.destroy();
-                mdns.removeListener('response', res_handler);
-                app.commandLine.appendSwitch('proxy-server', 'socks5://' + process.env.SOCKS5_ADDRESS + ':' + process.env.SOCKS5_PORT);
-                if (!process.env.SOCKS5_LOCAL_DNS) {
-                    app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + process.env.SOCKS5_ADDRESS);
-                }
-                gateway_resolve_task = Promise.reslove();
-            }, 1000);
-            const res_handler = res => {
-                if (res.type === 'response') {
-                    if (res.questions.length > 0 && res.questions[0].type === question.type && res.questions[0].name === question.name) {
-                        mdns.destroy();
-                        setTimeout(() => {
-                            mdns.removeListener('response', res_handler);
-                        }, 100);
-                        if (res.answers && res.answers.length > 0 || res.additionals && res.additionals.length > 0) {
-                            clearTimeout(__timeout);
-                            __timeout = undefined;
-                            let gw_ip = res.answers[0].data.target;
-                            const port = res.answers[0].data.part;
-                            if (gw_ip.hostname.indexOf(',') > -1) {
-                                gw_ip.hostname = gw_ip.substr(0, socks_ip.indexOf(','));
-                            }
-                            app.commandLine.appendSwitch('proxy-server', 'socks5://' + gw_ip + ':' + port);
-                            if (!process.env.SOCKS5_LOCAL_DNS) {
-                                app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + gw_ip);
-                            }
-                        } else {
-                            app.commandLine.appendSwitch('proxy-server', 'socks5://' + process.env.SOCKS5_ADDRESS + ':' + process.env.SOCKS5_PORT);
-                            if (!process.env.SOCKS5_LOCAL_DNS) {
-                                app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + process.env.SOCKS5_ADDRESS);
-                            }
-                        }
-                        resolve();
-                    }
-                }
-            };
-            mdns.on('response', res_handler);
-            mdns.on('ready', () => {
-                mdns.query({
-                    questions: [question]
-                });
-            });
-        });
-    } else {
-        app.commandLine.appendSwitch('proxy-server', 'socks5://' + process.env.SOCKS5_ADDRESS + ':' + process.env.SOCKS5_PORT);
-        if (!process.env.SOCKS5_LOCAL_DNS) {
-            app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + process.env.SOCKS5_ADDRESS);
-        }
-        gateway_resolve_task = Promise.resolve();
-    }
-} else {
-    gateway_resolve_task = Promise.resolve();
-}
-
-gateway_resolve_task.then(() => {
-    app.on('window-all-closed', function() {
-        app_register.close();
-        stateUpdator.flush().then(() => {
-            return mainDB.close().then(() => {
-                if (process.platform != 'darwin') {
-                    app.quit();
-                }
-            });
-        });
+const
+    booter = new(require(__dirname + '/libs/bootstrapper'))({
+        refresh_seconds: refresh_seconds
     });
 
-    try {
-        const flashPath = app.getPath('pepperFlashSystemPlugin');
-        if (flashPath) {
-            app.commandLine.appendSwitch('ppapi-flash-path', flashPath);
-        }
-    } catch (err) {
-        console.log(err);
-        console.log('\nSystem wide pepper flash plugin failed to be initialized, flash will not be available on web pages ...');
+let tray = null;
+
+const shouldQuit = app.makeSingleInstance((argv, wkdir) => {
+    if (tray) {
+
     }
+});
 
-    const createWindow = (initBounds) => {
-        const wopts = {
-            width: initBounds ? initBounds.width : 1530,
-            height: initBounds ? initBounds.height : 920,
-            frame: false
-        };
-        if (initBounds) {
-            wopts.x = initBounds.loc_x;
-            wopts.y = initBounds.loc_y;
+if (shouldQuit) {
+    app.quit();
+    return;
+}
+
+const launcher = function(m, w, e) {
+    const gw = this;
+    if (gw.started)
+        return;
+    let socks5_address = gw.answers[0].targets[0];
+    const child_opts = {
+        cwd: process.cwd(),
+        detached: false,
+        shell: false,
+        env: {
+            CONTEXT_TITLE: gw.name,
+            SOCKS5_ADDRESS: socks5_address,
+            SOCKS5_PORT: gw.answers[0].port
         }
-        mainWindow = new BrowserWindow(wopts);
-        mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
-        mainWindow.webContents.on('did-finish-load', () => {
-            let copts = {
-                has_context: !!process.env.SOCKS5_ADDRESS
-            };
-            if (copts.has_context) {
-                copts.context_title = process.env.CONTEXT_TITLE;
-                copts.start_url = process.env.START_URL;
-                copts.socks5_address = process.env.SOCKS5_ADDRESS;
-                copts.socks5_port = process.env.SOCKS5_PORT;
-            }
-            mainWindow.webContents.send('runtime-context-update', copts);
-        });
-        mainWindow.on('resize', () => {
-            stateUpdator.updateWindowState(mainWindowId, {
-                bounds: mainWindow.getBounds()
-            })
-        });
-        mainWindow.on('move', () => {
-            stateUpdator.updateWindowState(mainWindowId, {
-                bounds: mainWindow.getBounds()
-            })
-        });
-        mainWindow.on('enter-full-screen', () => {
-
-        });
-        mainWindow.on('leave-full-screen', () => {
-
-        });
-        mainWindow.on('closed', () => {
-            mainWindow = null;
-        });
     };
+    const keys = Object.keys(process.env);
+    keys.forEach(k => {
+        child_opts.env[k] = process.env[k];
+    });
+    gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/.bin/electron.cmd'), ['main-entry.js'], child_opts);
+    gw.proc.on('error', err => {
+        console.log(err);
+    });
+    gw.proc.on('exit', function(code, sig) {
+        gw.started = false;
+        console.log(`process exited with code ${code}, sig: ${sig}`);
+    }.bind(gw));
+    if (gw.proc.stdout) {
+        gw.proc.stdout.on('data', (data) => {
+            console.log(`local-app: ${data}`);
+        });
+        gw.proc.stderr.on('data', (data) => {
+            console.error(`local-app: ${data}`);
+        });
+    }
+};
 
-    app.on('ready', () => {
-        if (app_register.regist(app)) {
-            mainDB = new mainDbApi({
-                home: app.getPath('appData'),
-                path: app.getName() + '/databases'
-            });
-            mainDB.open().then(() => {
-                stateUpdator = new winStateUpdator(mainDB);
-                mainDB.find({
-                    table: 'window-states',
-                    predicate: '"window_id"=\'' + mainWindowId + '\''
-                }).then((wstate) => {
-                    createWindow(wstate);
-                });
+let gateway_ports = [];
+let last_update = undefined;
+
+app.on('window-all-closed', () => {
+    app_register.close();
+    stateUpdator.flush().then(() => {
+        return mainDB.close().then(() => {
+            if (process.platform != 'darwin') {
+                app.quit();
+            }
+        });
+    });
+});
+
+const updator = () => {
+    return booter.update_ports().then(r => {
+        gateway_ports = [];
+        last_update = (new Date()).getTime();
+        r.ports.forEach(gwp => {
+            gateway_ports.push(gwp);
+        });
+        if (r.more) {
+            r.more.on('more', (gwp) => {
+                gateway_ports.push(gwp);
             });
         }
+    });
+};
+
+app.on('ready', () => {
+    booter.update_ports().then(r => {
+        last_update = (new Date()).getTime();
+        const getMenu = (gw_lst) => {
+            const contextMenu = new Menu();
+            gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).forEach(gw => {
+                contextMenu.append(new MenuItem({
+                    icon: 'images/green-dot.png',
+                    label: gw.name,
+                    sublabel: gw.descr || ' ... ',
+                    click: launcher.bind(gw)
+                }));
+            });
+            contextMenu.append(new MenuItem({
+                type: 'separator'
+            }));
+            contextMenu.append(new MenuItem({
+                label: 'Exit',
+                click: (m, w, e) => {
+                    app.quit();
+                }
+            }));
+            return contextMenu;
+        };
+        r.ports.forEach(gwp => {
+            gateway_ports.push(gwp);
+        });
+        r.more.on('more', (gwp) => {
+            gateway_ports.push(gwp);
+        });
+        tray = new Tray('images/main-icon.png');
+        tray.on('click', (e, b) => {
+            const now = (new Date()).getTime();
+            if (now - last_update > refresh_seconds * 1000) {
+                updator().then(() => {
+                    tray.setContextMenu(getMenu(gateway_ports));
+                    tray.popUpContextMenu();
+                });
+            } else {
+                tray.setContextMenu(getMenu(gateway_ports));
+                tray.popUpContextMenu();
+            }
+        });
+        tray.on('right-click', (e) => {
+            e.preventDefault();
+        });
+        tray.setToolTip('1-NET Trans-LAN Browser');
+        setTimeout(() => {
+            r.more.removeAllListeners('more');
+            r.more = undefined;
+            booter.close();
+        }, 10000);
     });
 });
