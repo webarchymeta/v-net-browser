@@ -5,6 +5,7 @@ const {
     Tray
 } = require('electron'),
     path = require('path'),
+    os = require('os'),
     child_proc = require('child_process');
 
 const refresh_seconds = 10;
@@ -46,12 +47,13 @@ const launcher = function(m, w, e) {
     keys.forEach(k => {
         child_opts.env[k] = process.env[k];
     });
-    gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/.bin/electron.cmd'), ['main-entry.js'], child_opts);
+    gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/.bin/electron' + (os.platform() === 'win32' ? '.cmd' : '')), ['main-entry.js'], child_opts);
     gw.proc.on('error', err => {
         console.log(err);
     });
     gw.proc.on('exit', function(code, sig) {
-        gw.started = false;
+        this.started = false;
+        this.proc = undefined;
         console.log(`process exited with code ${code}, sig: ${sig}`);
     }.bind(gw));
     if (gw.proc.stdout) {
@@ -62,6 +64,7 @@ const launcher = function(m, w, e) {
             console.error(`local-app: ${data}`);
         });
     }
+    gw.started = true;
 };
 
 let gateway_ports = [];
@@ -80,16 +83,32 @@ app.on('window-all-closed', () => {
 
 const updator = () => {
     return booter.update_ports().then(r => {
+        const old_ports = gateway_ports.map(p => p);
         gateway_ports = [];
         last_update = (new Date()).getTime();
         r.ports.forEach(gwp => {
+            const old = old_ports.find(p => p.name === gwp.name);
+            if (old) {
+                gwp.proc = old.proc;
+                gwp.started = old.started;
+            }
             gateway_ports.push(gwp);
         });
         if (r.more) {
-            r.more.on('more', (gwp) => {
+            r.more.on('more', function(gwp) {
+                const old = this.find(p => p.name === gwp.name);
+                if (old) {
+                    gwp.proc = old.proc;
+                    gwp.started = old.started;
+                }
                 gateway_ports.push(gwp);
-            });
+            }.bind(old_ports));
         }
+        setTimeout(function() {
+            this.more.removeAllListeners('more');
+            this.more = undefined;
+            booter.close();
+        }.bind(r), 10000);
     });
 };
 

@@ -1,7 +1,8 @@
-# electron-browser
+Derived from [electron-browser](https://github.com/pfrazee/electron-browser).
 
-A browser ui for electron, written in react.
-To use it in your project, I recommend forking or cloning this repo.
+# 1-NET-browser
+
+A browser for 1-NET, based on electron, written in react. To use it in your project, I recommend forking or cloning this repo.
 
 ![./screenshot.png](./screenshot.png)
 
@@ -10,16 +11,26 @@ To use it in your project, I recommend forking or cloning this repo.
 To run this code, follow these steps:
 
 ```
-git clone https://github.com/pfrazee/electron-browser
-cd electron-browser
-npm install -d
+git clone https://github.com/webarchymeta/1-net-browser
+cd 1-net-browser
+npm install
 webpack
+npm run bootstrap
+```
+
+The last command will start a tray icon on user's desktop. When clicked, a list of active 1-NET gateway ports available to the current LAN will be listed.
+
+```
 npm start
 ```
 
-**-- Plug --**
+Starts the browser in normal mode, without going through a the 1-NET gateway tunnel.
 
-If you're looking for an actively maintained electron-based browser with lots more features, check out [Beaker](https://github.com/beakerbrowser/beaker), my followup project.
+```
+npm run register
+```
+
+Registers the browser with a running 1-NET desktop client, which can be used to launch the browser for a specific 1-NET gateway tunnel (port) from within.
 
 ## License
 

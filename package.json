@@ -1,9 +1,10 @@
 {
     "name": "1-net-browser",
-    "version": "1.0.0",
-    "description": "browser ui for electron, written in react",
+    "version": "0.2.0",
+    "description": "browser for 1-NET based on electron, written in react",
     "scripts": {
         "start": "node_modules/.bin/electron main-entry.js",
+        "bootstrap": "node_modules/.bin/electron index.js",
         "register": "node_modules/.bin/electron main-entry.js --register"
     },
     "keywords": [
@@ -12,7 +13,7 @@
         "webview",
         "react"
     ],
-    "author": "Paul Frazee <pfrazee@gmail.com>",
+    "author": "Shuqian Ying<sqying@archymeta.com>, Paul Frazee <pfrazee@gmail.com>",
     "license": "MIT",
     "devDependencies": {
         "babel-core": "^6.17.0",

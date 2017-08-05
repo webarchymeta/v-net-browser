@@ -65,9 +65,9 @@ const api = function(opts) {
 
     self.is_loading = () => loading;
 
-    self.update_ports = () => {
+    self.update_ports = (force_refresh) => {
         const now = new Date();
-        if (last_update && (now.getTime() - last_update) < refresh_seconds * 1000) {
+        if (!force_refresh && last_update && (now.getTime() - last_update) < refresh_seconds * 1000) {
             return Promise.resolve({
                 ports: curr_list
             });
