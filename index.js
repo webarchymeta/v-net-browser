@@ -105,8 +105,10 @@ const updator = () => {
             }.bind(old_ports));
         }
         setTimeout(function() {
-            this.more.removeAllListeners('more');
-            this.more = undefined;
+            if (this.more) {
+                this.more.removeAllListeners('more');
+                this.more = undefined;
+            }
             booter.close();
         }.bind(r), 10000);
     });
@@ -159,10 +161,12 @@ app.on('ready', () => {
             e.preventDefault();
         });
         tray.setToolTip('1-NET Trans-LAN Browser');
-        setTimeout(() => {
-            r.more.removeAllListeners('more');
-            r.more = undefined;
+        setTimeout(function() {
+            if (this.more) {
+                this.more.removeAllListeners('more');
+                this.more = undefined;
+            }
             booter.close();
-        }, 10000);
+        }.bind(this), 10000);
     });
 });
