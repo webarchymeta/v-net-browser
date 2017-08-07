@@ -2,7 +2,7 @@ Derived from [electron-browser](https://github.com/pfrazee/electron-browser).
 
 # 1-NET-browser
 
-A browser for 1-NET, based on electron, written in react. To use it in your project, I recommend forking or cloning this repo.
+A browser for 1-NET, based on electron, written in react.
 
 ![./screenshot.png](./screenshot.png)
 

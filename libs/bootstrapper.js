@@ -29,10 +29,16 @@ const gateway_port = function(data) {
     self.proc;
     data.answers.forEach(a => {
         if (data.type === 'SRV') {
-            self.answers.push({
-                targets: a.target.split(',').filter(t => !!t.trim()).map(t => t.trim()),
-                port: a.port
-            });
+            if (a.target) {
+                self.answers.push({
+                    targets: a.target.split(',').filter(t => !!t.trim()).map(t => t.trim()),
+                    port: a.port
+                });
+            } else if (a instanceof Uint8Array) {
+                self.descr = Buffer.from(a).toString('utf8');
+            } else if (a instanceof String) {
+                self.descr = a;
+            }
         } else {
             self.answers.push(a);
         }
@@ -122,7 +128,17 @@ const api = function(opts) {
                         });
                     }
                 });
-                return dns.query(curr_list.map(p => p.name), 'TXT').then(add_descr);
+                const rec = {
+                    ports: curr_list,
+                    more: evtSink
+                };
+                wait_list.forEach(p => {
+                    p.resolve(rec);
+                });
+                loading = false;
+                wait_list = [];
+                return rec;
+                //return dns.query(curr_list.map(p => p.name), 'TXT').then(add_descr);
             });
         }
     };

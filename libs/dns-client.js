@@ -84,10 +84,10 @@ const client = function() {
                     questions.forEach(q => {
                         if (res.questions.length > 0 && res.questions[0].type === q.type && res.questions[0].name === q.name) {
                             if (res.answers && res.answers.length > 0) {
-                                add_answers(res.answers.filter(a => a.type === type));
+                                add_answers(res.answers.filter(a => a.type === type || type === 'SRV' && a.type === 'TXT'));
                             }
                             if (res.additionals && res.additionals.length > 0) {
-                                add_answers(res.additionals.filter(a => a.type === type));
+                                add_answers(res.additionals.filter(a => a.type === type || type === 'SRV' && a.type === 'TXT'));
                             }
                         }
                     });
