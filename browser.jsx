@@ -49,7 +49,30 @@ ipcRenderer.on('runtime-context-update', (e, context) => {
     window.__frame_element.setState(window.__frame_element.state);
 });
 
-var BrowserChrome = React.createClass({
+const mdns_cache = {};
+
+const mdns_rec = function (data) {
+    const self = this;
+    self.location = data.location;
+    self.failed = !data.address;
+    self.address = data.address;
+    self.port = data.port;
+    self.created = (new Date()).getTime();
+    self.resolve = () => {
+        if (!self.failed) {
+            const url = urllib.parse(self.location);
+            url.href = undefined;
+            url.host = undefined;
+            url.hostname = self.address;
+            url.port = self.port;
+            return urllib.format(url);
+        } else {
+            return self.location;
+        }
+    };
+};
+
+const BrowserChrome = React.createClass({
     getInitialState: function () {
         return {
             pages: [createPageObject()],
@@ -240,22 +263,36 @@ var BrowserChrome = React.createClass({
         onClickSync: console.log.bind(console, 'sync'),
         onEnterLocation: function (location) {
             if (location.match(onenet_gateway_url_pattern)) {
-                const url = urllib.parse(location);
-                if (url.hostname.match(onenet_gateway_url_pattern)) {
-                    ipcRenderer.send('mdns-query', { hostname: url.hostname });
-                    ipcRenderer.once('mdns-query-ack', (e, r) => {
-                        if (r.ok) {
-                            url.host = undefined;
-                            url.href = undefined;
-                            url.hostname = r.response.address;
-                            url.port = r.response.port;
-                            this.getPage().navigateTo(urllib.format(url));
-                        } else {
-                            console.log(r.error);
-                        }
-                    });
+                const rec = mdns_cache[location];
+                const now = (new Date()).getTime();
+                if (rec && (now - rec.created < 60 * 1000)) {
+                    this.getPage().navigateTo(rec.resolve());
                 } else {
-                    this.getPage().navigateTo(location);
+                    const url = urllib.parse(location);
+                    if (url.hostname.match(onenet_gateway_url_pattern)) {
+                        ipcRenderer.send('mdns-query', { hostname: url.hostname });
+                        ipcRenderer.once('mdns-query-ack', (e, r) => {
+                            if (r.ok) {
+                                url.host = undefined;
+                                url.href = undefined;
+                                url.hostname = r.response.address;
+                                url.port = r.response.port;
+                                mdns_cache[location] = new mdns_rec({
+                                    location: location,
+                                    address: url.hostname,
+                                    port: url.port
+                                });
+                                this.getPage().navigateTo(urllib.format(url));
+                            } else {
+                                mdns_cache[location] = new mdns_rec({
+                                    location: location
+                                });
+                                console.log(r.error);
+                            }
+                        });
+                    } else {
+                        this.getPage().navigateTo(location);
+                    }
                 }
             } else {
                 this.getPage().navigateTo(location);

@@ -119,6 +119,29 @@
 	    window.__frame_element.setState(window.__frame_element.state);
 	});
 
+	var mdns_cache = {};
+
+	var mdns_rec = function mdns_rec(data) {
+	    var self = this;
+	    self.location = data.location;
+	    self.failed = !data.address;
+	    self.address = data.address;
+	    self.port = data.port;
+	    self.created = new Date().getTime();
+	    self.resolve = function () {
+	        if (!self.failed) {
+	            var url = urllib.parse(self.location);
+	            url.href = undefined;
+	            url.host = undefined;
+	            url.hostname = self.address;
+	            url.port = self.port;
+	            return urllib.format(url);
+	        } else {
+	            return self.location;
+	        }
+	    };
+	};
+
 	var BrowserChrome = _react2.default.createClass({
 	    displayName: 'BrowserChrome',
 
@@ -329,25 +352,39 @@
 	            var _this = this;
 
 	            if (location.match(onenet_gateway_url_pattern)) {
-	                (function () {
-	                    var url = urllib.parse(location);
-	                    if (url.hostname.match(onenet_gateway_url_pattern)) {
-	                        ipcRenderer.send('mdns-query', { hostname: url.hostname });
-	                        ipcRenderer.once('mdns-query-ack', function (e, r) {
-	                            if (r.ok) {
-	                                url.host = undefined;
-	                                url.href = undefined;
-	                                url.hostname = r.response.address;
-	                                url.port = r.response.port;
-	                                _this.getPage().navigateTo(urllib.format(url));
-	                            } else {
-	                                console.log(r.error);
-	                            }
-	                        });
-	                    } else {
-	                        _this.getPage().navigateTo(location);
-	                    }
-	                })();
+	                var rec = mdns_cache[location];
+	                var now = new Date().getTime();
+	                if (rec && now - rec.created < 60 * 1000) {
+	                    this.getPage().navigateTo(rec.resolve());
+	                } else {
+	                    (function () {
+	                        var url = urllib.parse(location);
+	                        if (url.hostname.match(onenet_gateway_url_pattern)) {
+	                            ipcRenderer.send('mdns-query', { hostname: url.hostname });
+	                            ipcRenderer.once('mdns-query-ack', function (e, r) {
+	                                if (r.ok) {
+	                                    url.host = undefined;
+	                                    url.href = undefined;
+	                                    url.hostname = r.response.address;
+	                                    url.port = r.response.port;
+	                                    mdns_cache[location] = new mdns_rec({
+	                                        location: location,
+	                                        address: url.hostname,
+	                                        port: url.port
+	                                    });
+	                                    _this.getPage().navigateTo(urllib.format(url));
+	                                } else {
+	                                    mdns_cache[location] = new mdns_rec({
+	                                        location: location
+	                                    });
+	                                    console.log(r.error);
+	                                }
+	                            });
+	                        } else {
+	                            _this.getPage().navigateTo(location);
+	                        }
+	                    })();
+	                }
 	            } else {
 	                this.getPage().navigateTo(location);
 	            }
