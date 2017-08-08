@@ -26,6 +26,7 @@ const gateway_port = function(data) {
     self.descr = '';
     self.answers = [];
     self.started = false;
+    self.serving = false;
     self.proc;
     data.answers.forEach(a => {
         if (data.type === 'SRV') {
@@ -34,6 +35,7 @@ const gateway_port = function(data) {
                     targets: a.target.split(',').filter(t => !!t.trim()).map(t => t.trim()),
                     port: a.port
                 });
+                self.serving = self.answers[0].targets[0] !== 'stopped';
             } else if (a instanceof Uint8Array) {
                 self.descr = Buffer.from(a).toString('utf8');
             } else if (a instanceof String) {
@@ -137,6 +139,7 @@ const api = function(opts) {
                 });
                 loading = false;
                 wait_list = [];
+                last_update = now.getTime();
                 return rec;
                 //return dns.query(curr_list.map(p => p.name), 'TXT').then(add_descr);
             });

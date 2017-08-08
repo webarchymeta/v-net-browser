@@ -29,7 +29,6 @@ const client = function() {
                 port: 0,
                 subnets: subnets,
                 loopback: true,
-                use_group_ip: false,
                 client_only: true
             });
             curent_mdns = mdns;
@@ -112,21 +111,21 @@ const client = function() {
 
     self.find = (name, type) => {
         return new Promise((resolve, reject) => {
-            const mdns = new mdnsAPI()({
+            const mdns = new mdnsAPI({
                 port: 0,
                 subnets: subnets,
-                loopback: false,
-                use_group_ip: false,
+                loopback: true,
                 client_only: true
             });
             const question = {
                 type: type || 'SRV',
                 name: name
             };
-            const __timeout = setTimeout(() => {
+            let __timeout = setTimeout(() => {
                 mdns.destroy();
                 mdns.removeListener('response', res_handler);
-                reslove();
+                __timeout = undefined;
+                resolve();
             }, 1000);
             const res_handler = res => {
                 if (res.type === 'response') {
@@ -136,16 +135,18 @@ const client = function() {
                             mdns.removeListener('response', res_handler);
                         }, 100);
                         if (res.answers && res.answers.length > 0 || res.additionals && res.additionals.length > 0) {
-                            clearTimeout(__timeout);
-                            __timeout = undefined;
+                            if (__timeout) {
+                                clearTimeout(__timeout);
+                                __timeout = undefined;
+                            }
                             let gw_ip = res.answers[0].data.target;
-                            const port = res.answers[0].data.part;
-                            if (gw_ip.hostname.indexOf(',') > -1) {
-                                gw_ip.hostname = gw_ip.substr(0, socks_ip.indexOf(','));
+                            const port = res.answers[0].data.port;
+                            if (gw_ip.indexOf(',') > -1) {
+                                gw_ip = gw_ip.substr(0, socks_ip.indexOf(','));
                             }
                             resolve({
-                                socks5_address: gw_ip,
-                                socks5_port: port
+                                address: gw_ip,
+                                port: port
                             })
                         } else {
                             resolve();

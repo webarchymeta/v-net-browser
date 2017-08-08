@@ -4,6 +4,7 @@ const {
     ipcMain
 } = require('electron'),
     path = require('path'),
+    dns_client = require(__dirname + '/libs/dns-client'),
     app_register = require(__dirname + '/libs/app-register'),
     mainDbApi = require(__dirname + '/libs/main-db-api'),
     winStateUpdator = require(__dirname + '/libs/state-updator');
@@ -64,6 +65,21 @@ gateway_resolve_task.then(() => {
         console.log('\nSystem wide pepper flash plugin failed to be initialized, flash will not be available on web pages ...');
     }
 
+    ipcMain.on('mdns-query', (e, q) => {
+        const dns = new dns_client();
+        dns.find(q.hostname, 'SRV').then(resp => {
+            e.sender.send('mdns-query-ack', {
+                ok: true,
+                response: resp
+            });
+        }).catch(err => {
+            e.sender.send('mdns-query-ack', {
+                ok: false,
+                error: err
+            });
+        });
+    });
+
     const createWindow = (initBounds) => {
         const wopts = {
             width: initBounds ? initBounds.width : 1530,
@@ -77,7 +93,7 @@ gateway_resolve_task.then(() => {
         mainWindow = new BrowserWindow(wopts);
         mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
         mainWindow.webContents.on('did-finish-load', () => {
-            let copts = {
+            const copts = {
                 has_context: !!process.env.SOCKS5_ADDRESS
             };
             if (copts.has_context) {

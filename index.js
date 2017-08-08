@@ -32,16 +32,16 @@ const launcher = function(m, w, e) {
     const gw = this;
     if (gw.started)
         return;
-    let socks5_address = gw.answers[0].targets[0];
     const child_opts = {
         cwd: process.cwd(),
         detached: false,
         shell: false,
-        env: {
-            CONTEXT_TITLE: gw.name,
-            SOCKS5_ADDRESS: socks5_address,
-            SOCKS5_PORT: gw.answers[0].port
-        }
+        env: {}
+    };
+    if (gw.name) {
+        child_opts.env.CONTEXT_TITLE = gw.name;
+        child_opts.env.SOCKS5_ADDRESS = gw.answers[0].targets[0];
+        child_opts.env.SOCKS5_PORT = gw.answers[0].port;
     };
     const keys = Object.keys(process.env);
     keys.forEach(k => {
@@ -114,12 +114,25 @@ const updator = () => {
     });
 };
 
+const local_browser = {
+    started: false
+};
+
 app.on('ready', () => {
     booter.update_ports().then(r => {
         last_update = (new Date()).getTime();
         const getMenu = (gw_lst) => {
             const contextMenu = new Menu();
-            gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).forEach(gw => {
+            contextMenu.append(new MenuItem({
+                icon: 'images/blue-dot.png',
+                label: 'Local Brosing',
+                sublabel: 'Start browsing local resources ...',
+                click: launcher.bind(local_browser)
+            }));
+            contextMenu.append(new MenuItem({
+                type: 'separator'
+            }));
+            gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
                 contextMenu.append(new MenuItem({
                     icon: 'images/green-dot.png',
                     label: gw.name,

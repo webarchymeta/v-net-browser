@@ -27,7 +27,7 @@ const mdns = new (require('multicast-dns'))({
 
 const urllib = require('url');
 
-const onenet_gateway_url_pattern = /\.gw-master\.local\s*$/i;
+const onenet_gateway_url_pattern = /\.gw-master\.local(\/.*)?\s*$/i;
 
 function createPageObject(location, frameName) {
     return {
@@ -242,49 +242,17 @@ var BrowserChrome = React.createClass({
             if (location.match(onenet_gateway_url_pattern)) {
                 const url = urllib.parse(location);
                 if (url.hostname.match(onenet_gateway_url_pattern)) {
-                    const question = {
-                        type: 'SRV',
-                        name: url.hostname
-                    };
-                    const mdns = new mdnsAPI({
-                        port: 0,
-                        subnets: subnets,
-                        loopback: false,
-                        client_only
-                    });
-                    let __timeout = setTimeout(() => {
-                        mdns.destroy();
-                        mdns.removeListener('response', res_handler);
-                        this.getPage().navigateTo(location);
-                        __timeout = undefined;
-                    }, 1000);
-                    const res_handler = res => {
-                        if (res.type === 'response') {
-                            if (res.questions.length > 0 && res.questions[0].type === question.type && res.questions[0].name === question.name) {
-                                mdns.destroy();
-                                setTimeout(() => {
-                                    mdns.removeListener('response', res_handler);
-                                }, 100);
-                                if (res.answers && res.answers.length > 0 || res.additionals && res.additionals.length > 0) {
-                                    if (__timeout) {
-                                        clearTimeout(__timeout);
-                                        __timeout = undefined;
-                                    }
-                                    url.hostname = res.answers[0].data.target;
-                                    url.port = res.answers[0].data.part;
-                                    if (url.hostname.indexOf(',') > -1) {
-                                        url.hostname = url.hostname.substr(0, socks_ip.indexOf(','));
-                                    }
-                                    this.getPage().navigateTo(urllib.format(url));
-                                }
-                            } else {
-                                this.getPage().navigateTo(location);
-                            }
+                    ipcRenderer.send('mdns-query', { hostname: url.hostname });
+                    ipcRenderer.once('mdns-query-ack', (e, r) => {
+                        if (r.ok) {
+                            url.host = undefined;
+                            url.href = undefined;
+                            url.hostname = r.response.address;
+                            url.port = r.response.port;
+                            this.getPage().navigateTo(urllib.format(url));
+                        } else {
+                            console.log(r.error);
                         }
-                    };
-                    mdns.on('response', res_handler);
-                    mdns.query({
-                        questions: [question]
                     });
                 } else {
                     this.getPage().navigateTo(location);

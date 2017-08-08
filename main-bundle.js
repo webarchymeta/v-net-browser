@@ -97,7 +97,7 @@
 
 	var urllib = __webpack_require__(192);
 
-	var onenet_gateway_url_pattern = /\.gw-master\.local\s*$/i;
+	var onenet_gateway_url_pattern = /\.gw-master\.local(\/.*)?\s*$/i;
 
 	function createPageObject(location, frameName) {
 	    return {
@@ -332,51 +332,18 @@
 	                (function () {
 	                    var url = urllib.parse(location);
 	                    if (url.hostname.match(onenet_gateway_url_pattern)) {
-	                        (function () {
-	                            var question = {
-	                                type: 'SRV',
-	                                name: url.hostname
-	                            };
-	                            var mdns = new mdnsAPI({
-	                                port: 0,
-	                                subnets: subnets,
-	                                loopback: false
-	                            });
-	                            var __timeout = setTimeout(function () {
-	                                mdns.destroy();
-	                                mdns.removeListener('response', res_handler);
-	                                _this.getPage().navigateTo(location);
-	                                __timeout = undefined;
-	                            }, 1000);
-	                            var res_handler = function res_handler(res) {
-	                                if (res.type === 'response') {
-	                                    if (res.questions.length > 0 && res.questions[0].type === question.type && res.questions[0].name === question.name) {
-	                                        mdns.destroy();
-	                                        setTimeout(function () {
-	                                            mdns.removeListener('response', res_handler);
-	                                        }, 100);
-	                                        if (res.answers && res.answers.length > 0 || res.additionals && res.additionals.length > 0) {
-	                                            if (__timeout) {
-	                                                clearTimeout(__timeout);
-	                                                __timeout = undefined;
-	                                            }
-	                                            url.hostname = res.answers[0].data.target;
-	                                            url.port = res.answers[0].data.part;
-	                                            if (url.hostname.indexOf(',') > -1) {
-	                                                url.hostname = url.hostname.substr(0, socks_ip.indexOf(','));
-	                                            }
-	                                            _this.getPage().navigateTo(urllib.format(url));
-	                                        }
-	                                    } else {
-	                                        _this.getPage().navigateTo(location);
-	                                    }
-	                                }
-	                            };
-	                            mdns.on('response', res_handler);
-	                            mdns.query({
-	                                questions: [question]
-	                            });
-	                        })();
+	                        ipcRenderer.send('mdns-query', { hostname: url.hostname });
+	                        ipcRenderer.once('mdns-query-ack', function (e, r) {
+	                            if (r.ok) {
+	                                url.host = undefined;
+	                                url.href = undefined;
+	                                url.hostname = r.response.address;
+	                                url.port = r.response.port;
+	                                _this.getPage().navigateTo(urllib.format(url));
+	                            } else {
+	                                console.log(r.error);
+	                            }
+	                        });
 	                    } else {
 	                        _this.getPage().navigateTo(location);
 	                    }
@@ -22006,122 +21973,187 @@
 	    events = __webpack_require__(191),
 	    os = __webpack_require__(182);
 
-	const noop = function() {}
-
 	module.exports = function(opts) {
-	    if (!opts)
-	        opts = {};
-
+	    opts = opts || {};
 	    const that = new events.EventEmitter();
 	    const port = typeof opts.port === 'number' ? opts.port : 5353;
+	    const use_group_ip = opts.use_group_ip;
 	    const type = opts.type || 'udp4';
-	    const ip = opts.ip || opts.host || (type === 'udp4' ? '224.0.0.251' : 'FF02::FB');
-	    const subnets = opts.subnets;
-	    const me = {
-	        address: ip,
-	        port: port
-	    };
-
-	    let _destroyed = false;
-
+	    const group_ip = opts.group_ip || (type === 'udp4' ? '224.0.0.251' : 'FF02::FB');
+	    const client_only = !!opts.client_only;
+	    const subnets = opts.subnets && opts.subnets.length > 0 ? opts.subnets : undefined;
 	    const sendSockets = [];
-	    let interfaces = [];
+	    const interfaces = [];
+
+	    let destroyed = false;
 
 	    if (!opts.interface && !opts.interfaces) {
 	        const ifaces = os.networkInterfaces();
+	        const ip_family = type === 'udp4' ? 'ipv4' : 'ipv6';
 	        Object.keys(ifaces).forEach(key => {
 	            ifaces[key].forEach(ip => {
-	                if (!ip.internal && type.toLowerCase() === ip.family.toLowerCase()) {
-	                    if (!subnets || subnets.find(sn => sn.type.toLowerCase() === ip.family.toLowerCase() && ip.address.indexOf(sn.prefix) === 0)) {
+	                if (!ip.internal && ip_family.toLowerCase() === ip.family.toLowerCase()) {
+	                    if (!subnets || subnets.find(sn => ip.address.indexOf(sn.prefix) === 0)) {
 	                        interfaces.push(ip.address);
 	                    }
 	                }
 	            });
 	        });
-	    } else if (opts.interface && !opts.interfaces) {
+	    } else if (opts.interface) {
 	        interfaces.push(opts.interface);
 	    } else {
-	        interfaces = opts.interfaces;
+	        opts.interfaces.forEach(iip => {
+	            interfaces.push(iip);
+	        });
 	    }
 
-	    const socket = opts.socket || dgram.createSocket({
-	        type: type,
-	        reuseAddr: opts.reuseAddr !== false,
-	        toString: function() {
-	            return type
+	    const domain_match = (addr1, addr2) => {
+	        if (type === 'udp4') {
+	            const an1 = addr1.split('.');
+	            const an2 = addr2.split('.');
+	            if (!subnets) {
+	                let cnt = 0;
+	                for (let i = 0; i < an1.length; i++) {
+	                    if (an1[i] === an2[i])
+	                        cnt++;
+	                    else
+	                        break;
+	                }
+	                return cnt > 0;
+	            } else {
+	                const cnts = subnets.map((sn, idx) => {
+	                    let cnt = 0;
+	                    const dns = sn.prefix.split('.').filter(n => !!n);
+	                    for (let i = 0; i < dns.length; i++) {
+	                        if (dns[i] === an1[i] && an1[i] === an2[i])
+	                            cnt++;
+	                        else
+	                            break;
+	                    }
+	                    return {
+	                        match: cnt === dns.length,
+	                        i: idx,
+	                        cnt: cnt
+	                    };
+	                }).filter(c => !!c.cnt).sort((a, b) => a.cnt > b.cnt ? -1 : a.cnt === b.cnt ? 0 : 1);
+	                return cnts.length > 0 && cnts[0].match;
+	            }
+	        } else {
+	            //tmp
+	            return true;
 	        }
-	    });
+	    };
 
-	    socket.on('error', err => {
-	        if (err.code === 'EACCES' || err.code === 'EADDRINUSE')
-	            that.emit('error', err);
-	        else
-	            that.emit('warning', err);
-	    });
-
-	    socket.on('message', (message, rinfo) => {
-	        try {
-	            message = packet.decode(message);
-	        } catch (err) {
-	            that.emit('warning', err);
-	            return;
-	        }
-
-	        that.emit('packet', message, rinfo);
-
-	        if (message.type === 'query')
-	            that.emit('query', message, rinfo);
-	        if (message.type === 'response')
-	            that.emit('response', message, rinfo);
-	    });
-
-	    socket.on('listening', () => {
-	        if (!port)
-	            port = me.port = socket.address().port;
-	        if (opts.multicast !== false) {
+	    interfaces.forEach(iip => {
+	        const s = dgram.createSocket({
+	            type: type,
+	            reuseAddr: opts.reuseAddr !== false,
+	            toString: () => type
+	        });
+	        s.on('listening', function() {
 	            try {
-	                interfaces.forEach(fi => {
-	                    socket.addMembership(ip, fi);
-	                });
+	                this.addMembership(group_ip, iip);
 	            } catch (err) {
 	                that.emit('error', err);
 	            }
-	            if (opts.ttl) {
-	                socket.setMulticastTTL(opts.ttl);
+	            this.setMulticastTTL(opts.ttl || 5);
+	            this.setMulticastLoopback(!!opts.loopback);
+	            that.emit('ready');
+	        }.bind(s));
+	        s.on('message', (message, rinfo) => {
+	            try {
+	                message = packet.decode(message);
+	            } catch (err) {
+	                that.emit('warning', err);
+	                return;
 	            }
-	            socket.setMulticastLoopback(!!opts.loopback);
-	        }
-	    });
-
-	    const bind = thunky(cb => {
-	        const _port = port || 0;
-	        socket.once('error', cb);
-	        socket.bind(_port, opts.interface, () => {
-	            socket.removeListener('error', cb);
-	            cb(null);
+	            if (message.type === 'response')
+	                that.emit('response', message, rinfo);
 	        });
+	        s.on('error', err => {
+	            if (err.code === 'EACCES' || err.code === 'EADDRINUSE')
+	                that.emit('error', err);
+	            else
+	                that.emit('warning', err);
+	        });
+	        s.bind(0, iip, () => {
+	            const adr = s.address();
+	            s.local_ip = adr.address;
+	            s.local_port = adr.port;
+	        });
+	        sendSockets.push(s);
 	    });
 
-	    bind(err => {
-	        if (err)
-	            return that.emit('error', err);
-	        that.emit('ready');
-	    });
+	    const socket = !client_only ? dgram.createSocket({
+	        type: type,
+	        reuseAddr: opts.reuseAddr !== false,
+	        toString: () => type
+	    }) : undefined;
+
+	    if (!client_only) {
+
+	        socket.on('error', err => {
+	            if (err.code === 'EACCES' || err.code === 'EADDRINUSE')
+	                that.emit('error', err);
+	            else
+	                that.emit('warning', err);
+	        });
+
+	        socket.on('message', (message, rinfo) => {
+	            try {
+	                message = packet.decode(message);
+	            } catch (err) {
+	                that.emit('warning', err);
+	                return;
+	            }
+
+	            that.emit('packet', message, rinfo);
+
+	            if (message.type === 'query')
+	                that.emit('query', message, rinfo);
+	            if (message.type === 'response')
+	                that.emit('response', message, rinfo);
+	        });
+
+	        socket.on('listening', () => {
+	            try {
+	                interfaces.forEach(fi => {
+	                    socket.addMembership(group_ip, fi);
+	                });
+	            } catch (err) {
+	                that.emit('warning', `add membership: ${fi} to group ${group_ip} failed`);
+	                that.emit('error', err);
+	            }
+	            socket.setMulticastTTL(opts.ttl || 5);
+	            socket.setMulticastLoopback(!!opts.loopback);
+	        });
+
+	        if (os.platform() === 'win32' || !use_group_ip || !opts.multicast) {
+	            socket.bind(port || 0, () => {
+	                that.emit('ready');
+	            });
+	        } else {
+	            socket.bind(port || 0, group_ip, () => {
+	                that.emit('ready');
+	            });
+	        }
+	    }
 
 	    that.send = (value, rinfo, cb) => {
 	        if (typeof rinfo === 'function')
-	            return that.send(value, null, rinfo);
-	        if (!cb)
-	            cb = noop;
-	        if (!rinfo)
-	            rinfo = me;
-	        bind(err => {
-	            if (_destroyed)
-	                return cb();
-	            if (err)
-	                return cb(err);
-	            const message = packet.encode(value);
-	            socket.send(message, 0, message.length, rinfo.port, rinfo.address || rinfo.host, cb);
+	            return that.send(value, null, rinfo)
+	        if (destroyed)
+	            return cb && cb(new Error('sockets already closed'));
+	        const message = packet.encode(value);
+	        sendSockets.forEach(s => {
+	            if (!rinfo || domain_match(rinfo.address, s.local_ip)) {
+	                s.send(message, 0, message.length, rinfo ? rinfo.port : port || 5353, rinfo ? rinfo.address : group_ip, err => {
+	                    if (err) {
+	                        that.emit('error', err);
+	                    }
+	                    cb && cb(err);
+	                });
+	            }
 	        });
 	    };
 
@@ -22139,37 +22171,54 @@
 	        if (typeof type === 'function')
 	            return that.query(q, null, null, type);
 	        if (typeof type === 'object' && type && type.port)
-	            return that.query(q, null, type, rinfo);
+	            return that.query(q, null, type, cb);
 	        if (typeof rinfo === 'function')
 	            return that.query(q, type, null, rinfo);
-	        if (!cb)
-	            cb = noop
-
 	        if (typeof q === 'string') {
-	            q = [{
-	                name: q,
-	                type: type || 'ANY'
-	            }];
-	        }
-	        if (Array.isArray(q)) {
+	            q = {
+	                type: 'query',
+	                questions: [{
+	                    name: q,
+	                    type: type || 'ANY'
+	                }]
+	            };
+	        } else if (Array.isArray(q)) {
 	            q = {
 	                type: 'query',
 	                questions: q
 	            };
+	        } else {
+	            if (q.type !== 'query')
+	                q.type = 'query';
 	        }
-
-	        q.type = 'query';
 	        that.send(q, rinfo, cb);
 	    };
 
 	    that.destroy = cb => {
-	        if (!cb)
-	            cb = noop;
-	        if (_destroyed)
-	            return process.nextTick(cb);
-	        _destroyed = true;
-	        socket.once('close', cb);
-	        socket.close();
+	        if (destroyed)
+	            return cb && process.nextTick(cb);
+	        destroyed = true;
+	        if (!client_only) {
+	            interfaces.forEach(iip => {
+	                socket.dropMembership(group_ip, iip);
+	            });
+	            if (cb)
+	                socket.once('close', cb);
+	            socket.close();
+	        }
+	        sendSockets.forEach(s => {
+	            interfaces.forEach(iip => {
+	                try {
+	                    s.dropMembership(group_ip, iip);
+	                } catch (err) {
+
+	                }
+	            });
+	            if (cb)
+	                s.once('close', cb);
+	            s.close();
+	        });
+	        that.emit('shutdown');
 	    };
 
 	    return that;
