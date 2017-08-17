@@ -125,7 +125,7 @@ app.on('ready', () => {
             const contextMenu = new Menu();
             contextMenu.append(new MenuItem({
                 icon: 'images/blue-dot.png',
-                label: 'Local Brosing',
+                label: 'Local Browsing',
                 sublabel: 'Start browsing local resources ...',
                 click: launcher.bind(local_browser)
             }));

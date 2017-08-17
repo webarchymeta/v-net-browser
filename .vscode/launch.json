@@ -9,6 +9,6 @@
         "name": "Electron Main",
         "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron",
         "program": "${workspaceRoot}/index.js",
-        "protocol": "legacy"
+        "protocol": "inspector"
     }]
 }
