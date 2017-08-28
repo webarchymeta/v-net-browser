@@ -2,7 +2,8 @@ const {
     app,
     Menu,
     MenuItem,
-    Tray
+    Tray,
+    dialog
 } = require('electron'),
     path = require('path'),
     os = require('os'),
@@ -32,6 +33,10 @@ const launcher = function(m, w, e) {
     const gw = this;
     if (gw.started)
         return;
+    if (gw.auth_required) {
+        dialog.showErrorBox('Stop', 'The current browser does not support going through user authenticated 1-NET gateway port!');
+        return;
+    }
     const child_opts = {
         cwd: process.cwd(),
         detached: false,
@@ -134,7 +139,7 @@ app.on('ready', () => {
             }));
             gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
                 contextMenu.append(new MenuItem({
-                    icon: 'images/green-dot.png',
+                    icon: gw.auth_required ? 'images/green-locked-dot.png' : 'images/green-dot.png',
                     label: gw.name,
                     sublabel: gw.descr || ' ... ',
                     click: launcher.bind(gw)

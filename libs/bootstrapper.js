@@ -24,6 +24,8 @@ const gateway_port = function(data) {
     self.type = data.type;
     self.name = data.name;
     self.descr = '';
+    self.auth_required = false;
+    self.username;
     self.answers = [];
     self.started = false;
     self.serving = false;
@@ -37,9 +39,22 @@ const gateway_port = function(data) {
                 });
                 self.serving = self.answers[0].targets[0] !== 'stopped';
             } else if (a instanceof Uint8Array) {
-                self.descr = Buffer.from(a).toString('utf8');
+                const str = Buffer.from(a).toString('utf8');
+                try {
+                    const rec = JSON.parse(str);
+                    self.auth_required = rec.auth;
+                    self.descr = rec.descr;
+                } catch (ex) {
+                    self.descr = str;
+                }
             } else if (a instanceof String) {
-                self.descr = a;
+                try {
+                    const rec = JSON.parse(a);
+                    self.auth_required = rec.auth;
+                    self.descr = rec.descr;
+                } catch (ex) {
+                    self.descr = a;
+                }
             }
         } else {
             self.answers.push(a);
