@@ -101,7 +101,7 @@
 
 	function createPageObject(location, frameName) {
 	    return {
-	        location: location || process.env.START_URL,
+	        location: location || process.env.START_URL || 'http://',
 	        statusText: false,
 	        title: 'new tab',
 	        frameName: frameName,
@@ -114,7 +114,6 @@
 	}
 
 	ipcRenderer.on('runtime-context-update', function (e, context) {
-	    console.log(context);
 	    window.__frame_element.state.runtime_context = context;
 	    window.__frame_element.setState(window.__frame_element.state);
 	});
@@ -421,6 +420,20 @@
 	            if (!page.title) page.title = page.location;
 	            page.isLoading = false;
 	            this.setState(this.state);
+	        },
+	        onWillNavigate: function onWillNavigate(e, url, page, pageIndex) {
+	            if (url) {
+	                var webview = this.getWebView(pageIndex);
+	                page.statusText = 'Loading: ' + url;
+	                this.setState(this.state);
+	            }
+	        },
+	        onDidNavigate: function onDidNavigate(e, url, page, pageIndex) {
+	            if (url) {
+	                var webview = this.getWebView(pageIndex);
+	                page.statusText = false;
+	                this.setState(this.state);
+	            }
 	        },
 	        onPageTitleSet: function onPageTitleSet(e) {
 	            var page = this.getPageObject();
@@ -21930,12 +21943,22 @@
 	    displayName: 'BrowserPage',
 
 	    componentDidMount: function componentDidMount() {
+	        var _this = this;
+
 	        // setup resize events
 	        window.addEventListener('resize', resize);
 	        // attach webview events
 	        for (var k in webviewEvents) {
 	            this.refs.webview.addEventListener(k, webviewHandler(this, webviewEvents[k]));
 	        }
+
+	        this.refs.webview.addEventListener('will-navigate', function (e, url) {
+	            _this.props.onWillNavigate(e, url, _this.props.page, _this.props.pageIndex);
+	        });
+	        this.refs.webview.addEventListener('did-navigate', function (e, url) {
+	            _this.props.onDidNavigate(e, url, _this.props.page, _this.props.pageIndex);
+	        });
+
 	        setTimeout(resize, 1);
 	        // set location, if given
 	        if (this.props.page.location) {
@@ -21963,14 +21986,14 @@
 	    },
 
 	    render: function render() {
-	        var _this = this;
+	        var _this2 = this;
 
 	        return _react2.default.createElement(
 	            'div',
 	            { id: 'browser-page', className: this.props.isActive ? 'visible' : 'hidden' },
 	            _react2.default.createElement(BrowserPageSearch, { isActive: this.props.page.isSearching, onPageSearch: this.onPageSearch }),
 	            _react2.default.createElement('webview', { ref: 'webview', preload: './preload/main.js', onContextMenu: function onContextMenu(e) {
-	                    return _this.props.onContextMenu(e, _this.props.page, _this.props.pageIndex);
+	                    return _this2.props.onContextMenu(e, _this2.props.page, _this2.props.pageIndex);
 	                } }),
 	            _react2.default.createElement(BrowserPageStatus, { page: this.props.page })
 	        );

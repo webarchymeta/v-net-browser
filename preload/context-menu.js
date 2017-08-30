@@ -16,11 +16,14 @@ ipc.on('get-contextmenu-data', function(pos) {
     var el = document.elementFromPoint(pos.x, pos.y);
     while (el && el.tagName) {
         if (!data.img && el.tagName == 'IMG')
-            data.img = el.src
+            data.img = el.src;
         if (!data.href && el.href)
-            data.href = el.href
+            data.href = el.href;
         el = el.parentNode
     }
-
+    if (!data.href && window.__current_href)
+        data.href = window.__current_href;
+    if (!data.img && window.__current_img)
+        data.img = window.__current_img;
     triggerMenu(data);
 });

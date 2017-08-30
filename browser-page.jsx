@@ -35,7 +35,7 @@ const BrowserPageStatus = React.createClass({
 function webviewHandler(self, fnName) {
     return function (e) {
         if (self.props[fnName])
-            self.props[fnName](e, self.props.page, self.props.pageIndex)
+            self.props[fnName](e, self.props.page, self.props.pageIndex);
     }
 }
 
@@ -73,6 +73,10 @@ const BrowserPage = React.createClass({
         for (var k in webviewEvents) {
             this.refs.webview.addEventListener(k, webviewHandler(this, webviewEvents[k]));
         }
+
+        this.refs.webview.addEventListener('will-navigate', (e, url) => { this.props.onWillNavigate(e, url, this.props.page, this.props.pageIndex); });
+        this.refs.webview.addEventListener('did-navigate', (e, url) => { this.props.onDidNavigate(e, url, this.props.page, this.props.pageIndex); });
+
         setTimeout(resize, 1);
         // set location, if given
         if (this.props.page.location) {

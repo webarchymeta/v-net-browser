@@ -31,7 +31,7 @@ const onenet_gateway_url_pattern = /\.gw-master\.local(\/.*)?\s*$/i;
 
 function createPageObject(location, frameName) {
     return {
-        location: location || process.env.START_URL,
+        location: location || process.env.START_URL || 'http://',
         statusText: false,
         title: 'new tab',
         frameName: frameName,
@@ -44,7 +44,6 @@ function createPageObject(location, frameName) {
 }
 
 ipcRenderer.on('runtime-context-update', (e, context) => {
-    console.log(context);
     window.__frame_element.state.runtime_context = context;
     window.__frame_element.setState(window.__frame_element.state);
 });
@@ -189,8 +188,8 @@ const BrowserChrome = React.createClass({
         menu.popup(remote.getCurrentWindow())
     },
     webviewContextMenu: function (e) {
-        var self = this;
-        var menu = new Menu();
+        const self = this;
+        const menu = new Menu();
         if (e.href) {
             menu.append(new MenuItem({ label: 'Open Link in New Tab', click: function () { self.createTab(e.href) } }));
             menu.append(new MenuItem({ label: 'Copy Link Address', click: function () { clipboard.writeText(e.href) } }));
@@ -331,6 +330,20 @@ const BrowserChrome = React.createClass({
                 page.title = page.location;
             page.isLoading = false;
             this.setState(this.state);
+        },
+        onWillNavigate: function (e, url, page, pageIndex) {
+            if (url) {
+                var webview = this.getWebView(pageIndex);
+                page.statusText = 'Loading: ' + url;
+                this.setState(this.state);
+            }
+        },
+        onDidNavigate: function (e, url, page, pageIndex) {
+            if (url) {
+                var webview = this.getWebView(pageIndex);
+                page.statusText = false;
+                this.setState(this.state);
+            }
         },
         onPageTitleSet: function (e) {
             var page = this.getPageObject();
