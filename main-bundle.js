@@ -400,7 +400,6 @@
 	    pageHandlers: {
 	        onDidStartLoading: function onDidStartLoading(e, page) {
 	            page.isLoading = true;
-	            page.title = false;
 	            this.setState(this.state);
 	        },
 	        onDomReady: function onDomReady(e, page, pageIndex) {
@@ -417,7 +416,7 @@
 	            page.location = webview.getURL();
 	            page.canGoBack = webview.canGoBack();
 	            page.canGoForward = webview.canGoForward();
-	            if (!page.title) page.title = page.location;
+	            page.title = page.saved_title || page.location;
 	            page.isLoading = false;
 	            this.setState(this.state);
 	        },
@@ -438,6 +437,7 @@
 	        onPageTitleSet: function onPageTitleSet(e) {
 	            var page = this.getPageObject();
 	            page.title = e.title;
+	            page.saved_title = e.title;
 	            page.location = this.getWebView().getURL();
 	            this.setState(this.state);
 	        },
@@ -21689,11 +21689,11 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	var max_title_size = 30;
+	var max_title_size = 12;
 
 	var short_title = function short_title(title) {
 	    if (title.length < max_title_size) {
-	        return title;
+	        return { trunc: false, value: title };
 	    } else {
 	        if (title.indexOf('?') > -1) {
 	            title = title.substr(0, title.indexOf('?'));
@@ -21701,7 +21701,7 @@
 	        if (title.length > max_title_size) {
 	            title = title.substr(0, max_title_size) + '...';
 	        }
-	        return title;
+	        return { trunc: true, value: title };
 	    }
 	};
 
@@ -21709,20 +21709,30 @@
 	    displayName: 'BrowserTab',
 
 	    render: function render() {
-	        var title = this.props.page.title || 'loading';
+	        var title = this.props.page.isLoading ? 'loading' : this.props.page.title;
+	        var stitle = short_title(title);
 	        return _react2.default.createElement(
 	            'div',
-	            { className: this.props.isActive ? 'active' : '', title: title, onClick: this.props.onClick, onContextMenu: this.props.onContextMenu },
+	            { className: this.props.isActive ? 'active' : '', onClick: this.props.onClick, onContextMenu: this.props.onContextMenu },
 	            _react2.default.createElement(
 	                'a',
 	                { onClick: this.props.onClose },
 	                _react2.default.createElement('i', { className: 'fa fa-close' })
 	            ),
 	            _react2.default.createElement(
-	                'span',
-	                null,
-	                short_title(title),
-	                this.props.page.isLoading ? _react2.default.createElement('i', { className: 'fa fa-spinner fa-pulse' }) : undefined
+	                'a',
+	                { title: stitle.trunc ? title : undefined, className: 'title' },
+	                _react2.default.createElement(
+	                    'span',
+	                    null,
+	                    stitle.value,
+	                    this.props.page.isLoading ? _react2.default.createElement(
+	                        'span',
+	                        null,
+	                        '\xA0'
+	                    ) : undefined,
+	                    this.props.page.isLoading ? _react2.default.createElement('i', { className: 'fa fa-spinner fa-pulse' }) : undefined
+	                )
 	            )
 	        );
 	    }

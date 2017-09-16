@@ -309,7 +309,6 @@ const BrowserChrome = React.createClass({
     pageHandlers: {
         onDidStartLoading: function (e, page) {
             page.isLoading = true;
-            page.title = false;
             this.setState(this.state);
         },
         onDomReady: function (e, page, pageIndex) {
@@ -326,8 +325,7 @@ const BrowserChrome = React.createClass({
             page.location = webview.getURL();
             page.canGoBack = webview.canGoBack();
             page.canGoForward = webview.canGoForward();
-            if (!page.title)
-                page.title = page.location;
+            page.title = page.saved_title || page.location;
             page.isLoading = false;
             this.setState(this.state);
         },
@@ -348,6 +346,7 @@ const BrowserChrome = React.createClass({
         onPageTitleSet: function (e) {
             var page = this.getPageObject();
             page.title = e.title;
+            page.saved_title = e.title;
             page.location = this.getWebView().getURL();
             this.setState(this.state);
         },

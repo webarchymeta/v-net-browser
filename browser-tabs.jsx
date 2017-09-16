@@ -2,11 +2,11 @@
 
 import React from 'react';
 
-const max_title_size = 30;
+const max_title_size = 12;
 
 const short_title = title => {
     if (title.length < max_title_size) {
-        return title;
+        return { trunc: false, value: title };
     } else {
         if (title.indexOf('?') > -1) {
             title = title.substr(0, title.indexOf('?'));
@@ -14,19 +14,23 @@ const short_title = title => {
         if (title.length > max_title_size) {
             title = title.substr(0, max_title_size) + '...';
         }
-        return title;
+        return { trunc: true, value: title };
     }
 };
 
 const BrowserTab = React.createClass({
     render: function () {
-        const title = this.props.page.title || 'loading'
-        return <div className={this.props.isActive ? 'active' : ''} title={title} onClick={this.props.onClick} onContextMenu={this.props.onContextMenu}>
+        const title = this.props.page.isLoading ? 'loading' : this.props.page.title;
+        const stitle = short_title(title);
+        return <div className={this.props.isActive ? 'active' : ''} onClick={this.props.onClick} onContextMenu={this.props.onContextMenu}>
             <a onClick={this.props.onClose}><i className="fa fa-close" /></a>
-            <span>
-                {short_title(title)}
-                {this.props.page.isLoading ? <i className="fa fa-spinner fa-pulse" /> : undefined}
-            </span>
+            <a title={stitle.trunc ? title : undefined} className="title">
+                <span>
+                    {stitle.value}
+                    {this.props.page.isLoading ? <span>&nbsp;</span> : undefined}
+                    {this.props.page.isLoading ? <i className="fa fa-spinner fa-pulse" /> : undefined}
+                </span>
+            </a>
         </div>
     }
 });

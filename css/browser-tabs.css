@@ -44,7 +44,6 @@
 
 #browser-tabs>div>a {
   -webkit-app-region: no-drag;
-  display: inline-block;
   padding: 5px 10px;
   cursor: pointer;
   float: right;
@@ -53,6 +52,17 @@
 #browser-tabs>div>a:hover {
   background: rgb(245, 119, 119);
   color: #fff;
+}
+
+#browser-tabs>div>a.title {
+  -webkit-app-region: no-drag;
+  padding: 5px 10px;
+  cursor: default;
+}
+
+#browser-tabs>a.title:hover {
+  color: #fff;
+  background: rgb(99, 190, 229);
 }
 
 #browser-tabs>a {
