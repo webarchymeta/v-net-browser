@@ -138,7 +138,7 @@ const api = function(opts) {
                 };
                 more.on('more', p => {
                     if (p.answers.length > 0) {
-                        curr_list.push(gw);
+                        curr_list.push(new gateway_port(p));
                         dns.query([p.name], 'TXT').then(add_descr).then(() => {
                             const gw = new gateway_port(p);
                             evtSink.emit('more', gw);
