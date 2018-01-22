@@ -23,7 +23,7 @@ if (process.env.SOCKS5_ADDRESS) {
             if (result) {
                 app.commandLine.appendSwitch('proxy-server', 'socks5://' + result.socks5_address + ':' + result.socks5_port);
                 if (!process.env.SOCKS5_LOCAL_DNS) {
-                    app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + process.env.SOCKS5_ADDRESS);
+                    app.commandLine.appendSwitch('host-resolver-rules', 'MAP * 0.0.0.0, EXCLUDE ' + result.socks5_address);
                 }
             } else {
                 app.commandLine.appendSwitch('proxy-server', 'socks5://' + process.env.SOCKS5_ADDRESS + ':' + process.env.SOCKS5_PORT);
