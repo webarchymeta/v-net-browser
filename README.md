@@ -2,7 +2,7 @@ Derived from [electron-browser](https://github.com/pfrazee/electron-browser).
 
 # V-NET-browser
 
-A browser for 1-NET, based on electron, written in react.
+A browser for V-NET, based on electron, written in react.
 
 ![./screenshot.png](./screenshot.png)
 
@@ -30,7 +30,7 @@ Starts the browser in normal mode, without going through a the V-NET gateway tun
 npm run register
 ```
 
-Registers the browser with a running 1-NET desktop client, which can be used to launch the browser for a specific V-NET gateway tunnel (port) from within.
+Registers the browser with a running V-NET desktop client, which can be used to launch the browser for a specific V-NET gateway tunnel (port) from within.
 
 ## License
 
