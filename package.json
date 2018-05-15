@@ -1,7 +1,7 @@
 {
-    "name": "1-net-browser",
+    "name": "v-net-browser",
     "version": "0.2.0",
-    "description": "browser for 1-NET based on electron, written in react",
+    "description": "browser for V-NET based on electron, written in react",
     "scripts": {
         "start": "node_modules/.bin/electron main-entry.js",
         "bootstrap": "node_modules/.bin/electron index.js",
