@@ -1,6 +1,7 @@
 'use strict';
 
 import React from 'react';
+import CreateReactClass from 'create-react-class';
 
 const normalizedUri = input => {
     const prefix = 'http://';
@@ -10,13 +11,13 @@ const normalizedUri = input => {
     return input;
 };
 
-const BrowserNavbarBtn = React.createClass({
+const BrowserNavbarBtn = CreateReactClass({
     render: function () {
         return <a href="#" className={this.props.disabled ? 'disabled' : ''} title={this.props.title} onClick={this.props.onClick}><i className={'fa fa-' + this.props.icon} /></a>
     }
 });
 
-const BrowserNavbarLocation = React.createClass({
+const BrowserNavbarLocation = CreateReactClass({
     onKeyDown: function (e) {
         if (e.keyCode == 13) {
             let url = normalizedUri(e.target.value);
@@ -32,7 +33,7 @@ const BrowserNavbarLocation = React.createClass({
     }
 });
 
-const BrowserNavbar = React.createClass({
+const BrowserNavbar = CreateReactClass({
     render: function () {
         return <div id="browser-navbar">
             <BrowserNavbarBtn title="Rewind" icon="angle-double-left fa-lg" onClick={this.props.onClickHome} disabled={!this.props.page.canGoBack} />

@@ -14,7 +14,7 @@ To run this code, follow these steps:
 git clone https://github.com/webarchymeta/v-net-browser
 cd v-net-browser
 npm install
-webpack
+npm run build
 npm run bootstrap
 ```
 

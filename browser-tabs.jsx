@@ -1,6 +1,7 @@
 'use strict';
 
 import React from 'react';
+import CreateReactClass from 'create-react-class';
 
 const max_title_size = 12;
 
@@ -18,7 +19,7 @@ const short_title = title => {
     }
 };
 
-const BrowserTab = React.createClass({
+const BrowserTab = CreateReactClass({
     render: function () {
         const title = this.props.page.isLoading ? 'loading' : this.props.page.title;
         const stitle = short_title(title);
@@ -35,7 +36,7 @@ const BrowserTab = React.createClass({
     }
 });
 
-const BrowserTabs = React.createClass({
+const BrowserTabs = CreateReactClass({
     render: function () {
         var self = this
         return <div id="browser-tabs">

@@ -1,5 +1,6 @@
 'use strict'
 
+import CreateReactClass from 'create-react-class';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import BrowserTabs from './browser-tabs.jsx';
@@ -44,8 +45,10 @@ function createPageObject(location, frameName) {
 }
 
 ipcRenderer.on('runtime-context-update', (e, context) => {
-    window.__frame_element.state.runtime_context = context;
-    window.__frame_element.setState(window.__frame_element.state);
+    if (window.__frame_element) {
+        window.__frame_element.state.runtime_context = context;
+        window.__frame_element.setState(window.__frame_element.state);
+    }
 });
 
 const mdns_cache = {};
@@ -71,7 +74,7 @@ const mdns_rec = function (data) {
     };
 };
 
-const BrowserChrome = React.createClass({
+const BrowserChrome = CreateReactClass({
     getInitialState: function () {
         return {
             pages: [createPageObject()],
@@ -382,7 +385,7 @@ const BrowserChrome = React.createClass({
     },
     render: function () {
         const self = this;
-        return <div>
+        return <div className="browser-container">
             <BrowserTabs ref="tabs" pages={this.state.pages} currentPageIndex={this.state.currentPageIndex} {...this.tabHandlers} />
             <BrowserNavbar ref="navbar" {...this.navHandlers} page={this.state.pages[this.state.currentPageIndex]} />
             {this.state.pages.map((page, i) => {

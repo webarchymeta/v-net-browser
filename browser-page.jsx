@@ -1,8 +1,10 @@
+
 import React from 'react';
+import CreateReactClass from 'create-react-class';
 
 const pathlib = require('path');
 
-const BrowserPageSearch = React.createClass({
+const BrowserPageSearch = CreateReactClass({
     componentDidUpdate: function (prevProps) {
         if (!prevProps.isActive && this.props.isActive)
             this.refs.input.focus()
@@ -23,7 +25,7 @@ const BrowserPageSearch = React.createClass({
     }
 })
 
-const BrowserPageStatus = React.createClass({
+const BrowserPageStatus = CreateReactClass({
     render: function () {
         var status = this.props.page.statusText
         if (!status && this.props.page.isLoading)
@@ -65,7 +67,7 @@ function resize() {
     })
 }
 
-const BrowserPage = React.createClass({
+const BrowserPage = CreateReactClass({
     componentDidMount: function () {
         // setup resize events
         window.addEventListener('resize', resize);

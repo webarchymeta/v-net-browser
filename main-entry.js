@@ -91,6 +91,7 @@ gateway_resolve_task.then(() => {
             wopts.y = initBounds.loc_y;
         }
         mainWindow = new BrowserWindow(wopts);
+
         mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
         mainWindow.webContents.on('did-finish-load', () => {
             const copts = {

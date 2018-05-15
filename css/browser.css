@@ -1,7 +1,28 @@
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: sans-serif;
   overflow: hidden;
+  height: 100%;
+}
+
+#browser-chrome {
+  height: 100%;
+}
+
+#browser-chrome>.browser-container {
+  height: calc(100% - 85px);
+}
+
+#browser-chrome>.browser-container>#browser-page {
+  height: 100%;
+}
+
+#browser-chrome>.browser-container>#browser-page>webview {
+  height: 100%;
 }
 
 #draghandle {
