@@ -52,7 +52,7 @@ const launcher = function(m, w, e) {
     keys.forEach(k => {
         child_opts.env[k] = process.env[k];
     });
-    gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/.bin/electron' + (os.platform() === 'win32' ? '.cmd' : '')), ['main-entry.js'], child_opts);
+    gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/electron/dist/electron' + (os.platform() === 'win32' ? '.exe' : '')), ['main-entry.js'], child_opts);
     gw.proc.on('error', err => {
         console.log(err);
     });
