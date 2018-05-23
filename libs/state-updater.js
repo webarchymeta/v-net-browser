@@ -28,11 +28,11 @@ const job = function(_db, cmd) {
     };
 };
 
-const updator = function(_db) {
+const updater = function(_db) {
     const self = this;
     const db = _db;
     const pendings = {};
-    const deferredExc = (cmd) => {
+    const deferredExc = cmd => {
         let pending = pendings[cmd.table];
         if (!pending) {
             pending = new job(db, cmd);
@@ -46,6 +46,7 @@ const updator = function(_db) {
             return pendings[key].flush();
         }));
     };
+
     self.updateWindowState = (winId, wstate) => {
         const cmd = {
             table: 'window-states',
@@ -64,4 +65,4 @@ const updator = function(_db) {
     };
 };
 
-module.exports = updator;
+module.exports = updater;

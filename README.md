@@ -6,6 +6,10 @@ A browser for V-NET, based on electron, written in react.
 
 ![./screenshot.png](./screenshot.png)
 
+**Prerequisites**
+
+* Install latest LTS version of `nodejs`.
+
 **Install instructions**
 
 To run this code, follow these steps:

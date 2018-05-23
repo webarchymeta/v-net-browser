@@ -12,21 +12,24 @@ const {
 const refresh_seconds = 10;
 
 const
+    config = require(__dirname + '/config.json'),
     booter = new(require(__dirname + '/libs/bootstrapper'))({
         refresh_seconds: refresh_seconds
     });
 
 let tray = null;
+let mainEntry = undefined;
 
-const shouldQuit = app.makeSingleInstance((argv, wkdir) => {
-    if (tray) {
+if (!process.env.PRODUCTION_MODE) {
+    const shouldQuit = app.makeSingleInstance((argv, wkdir) => {
+        if (tray) {
 
+        }
+    });
+    if (shouldQuit) {
+        app.quit();
+        return;
     }
-});
-
-if (shouldQuit) {
-    app.quit();
-    return;
 }
 
 const launcher = function(m, w, e) {
@@ -34,7 +37,7 @@ const launcher = function(m, w, e) {
     if (gw.started)
         return;
     if (gw.auth_required) {
-        dialog.showErrorBox('Stop', 'The current browser does not support going through user authenticated 1-NET gateway port!');
+        dialog.showErrorBox('Stop', 'The current browser does not support going through user authenticated V-NET gateway port!');
         return;
     }
     const child_opts = {
@@ -52,7 +55,16 @@ const launcher = function(m, w, e) {
     keys.forEach(k => {
         child_opts.env[k] = process.env[k];
     });
-    gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/electron/dist/electron' + (os.platform() === 'win32' ? '.exe' : '')), ['main-entry.js'], child_opts);
+    if (!config.production_mode) {
+        gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/electron/dist/electron' + (os.platform() === 'win32' ? '.exe' : '')), ['main-entry.js'], child_opts);
+    } else {
+        child_opts.env.PRODUCTION_MODE = true;
+        if (!config.packaged) {
+            gw.proc = child_proc.spawn(path.join(process.cwd(), 'node_modules/electron/dist/electron' + (os.platform() === 'win32' ? '.exe' : '')), ['index.js'], child_opts);
+        } else {
+            gw.proc = child_proc.spawn(path.join(process.cwd(), config.package_name + (os.platform() === 'win32' ? '.exe' : '')), [], child_opts);
+        }
+    }
     gw.proc.on('error', err => {
         console.log(err);
     });
@@ -76,17 +88,12 @@ let gateway_ports = [];
 let last_update = undefined;
 
 app.on('window-all-closed', () => {
-    app_register.close();
-    stateUpdator.flush().then(() => {
-        return mainDB.close().then(() => {
-            if (process.platform != 'darwin') {
-                app.quit();
-            }
-        });
-    });
+    if (mainEntry) {
+        mainEntry.teardown();
+    }
 });
 
-const updator = () => {
+const updater = () => {
     return booter.update_ports().then(r => {
         const old_ports = gateway_ports.map(p => p);
         gateway_ports = [];
@@ -124,67 +131,72 @@ const local_browser = {
 };
 
 app.on('ready', () => {
-    booter.update_ports().then(r => {
-        last_update = (new Date()).getTime();
-        const getMenu = (gw_lst) => {
-            const contextMenu = new Menu();
-            contextMenu.append(new MenuItem({
-                icon: 'images/blue-dot.png',
-                label: 'Local Browsing',
-                sublabel: 'Start browsing local resources ...',
-                click: launcher.bind(local_browser)
-            }));
-            contextMenu.append(new MenuItem({
-                type: 'separator'
-            }));
-            gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
+    if (!process.env.PRODUCTION_MODE) {
+        booter.update_ports().then(r => {
+            last_update = (new Date()).getTime();
+            const getMenu = (gw_lst) => {
+                const contextMenu = new Menu();
                 contextMenu.append(new MenuItem({
-                    icon: gw.auth_required ? 'images/green-locked-dot.png' : 'images/green-dot.png',
-                    label: gw.name,
-                    sublabel: gw.descr || ' ... ',
-                    click: launcher.bind(gw)
+                    icon: __dirname + '/images/blue-dot.png',
+                    label: 'Local Browsing',
+                    sublabel: 'Start browsing local resources ...',
+                    click: launcher.bind(local_browser)
                 }));
+                contextMenu.append(new MenuItem({
+                    type: 'separator'
+                }));
+                gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
+                    contextMenu.append(new MenuItem({
+                        icon: gw.auth_required ? __dirname + '/images/green-locked-dot.png' : __dirname + '/images/green-dot.png',
+                        label: gw.name,
+                        sublabel: gw.descr || ' ... ',
+                        click: launcher.bind(gw)
+                    }));
+                });
+                contextMenu.append(new MenuItem({
+                    type: 'separator'
+                }));
+                contextMenu.append(new MenuItem({
+                    label: 'Exit',
+                    click: (m, w, e) => {
+                        app.quit();
+                    }
+                }));
+                return contextMenu;
+            };
+            r.ports.forEach(gwp => {
+                gateway_ports.push(gwp);
             });
-            contextMenu.append(new MenuItem({
-                type: 'separator'
-            }));
-            contextMenu.append(new MenuItem({
-                label: 'Exit',
-                click: (m, w, e) => {
-                    app.quit();
-                }
-            }));
-            return contextMenu;
-        };
-        r.ports.forEach(gwp => {
-            gateway_ports.push(gwp);
-        });
-        r.more.on('more', (gwp) => {
-            gateway_ports.push(gwp);
-        });
-        tray = new Tray('images/main-icon.png');
-        tray.on('click', (e, b) => {
-            const now = (new Date()).getTime();
-            if (now - last_update > refresh_seconds * 1000) {
-                updator().then(() => {
+            r.more.on('more', (gwp) => {
+                gateway_ports.push(gwp);
+            });
+            tray = new Tray(__dirname + '/images/main-icon.png');
+            tray.on('click', (e, b) => {
+                const now = (new Date()).getTime();
+                if (now - last_update > refresh_seconds * 1000) {
+                    updater().then(() => {
+                        tray.setContextMenu(getMenu(gateway_ports));
+                        tray.popUpContextMenu();
+                    });
+                } else {
                     tray.setContextMenu(getMenu(gateway_ports));
                     tray.popUpContextMenu();
-                });
-            } else {
-                tray.setContextMenu(getMenu(gateway_ports));
-                tray.popUpContextMenu();
-            }
+                }
+            });
+            tray.on('right-click', (e) => {
+                e.preventDefault();
+            });
+            tray.setToolTip('V-NET Trans-LAN Browser');
+            setTimeout(function() {
+                if (this.more) {
+                    this.more.removeAllListeners('more');
+                    this.more = undefined;
+                }
+                booter.close();
+            }.bind(this), 10000);
         });
-        tray.on('right-click', (e) => {
-            e.preventDefault();
-        });
-        tray.setToolTip('1-NET Trans-LAN Browser');
-        setTimeout(function() {
-            if (this.more) {
-                this.more.removeAllListeners('more');
-                this.more = undefined;
-            }
-            booter.close();
-        }.bind(this), 10000);
-    });
+    } else {
+        mainEntry = require(__dirname + '/main-entry');
+        mainEntry.startup();
+    }
 });

@@ -23,6 +23,7 @@
         "babel-preset-react": "^6.24.1",
         "create-react-class": "^15.6.3",
         "css-loader": "^0.25.0",
+        "electron": "^2.0.0",
         "file-loader": "^0.9.0",
         "grunt": "^1.0.1",
         "grunt-contrib-concat": "^1.0.1",
@@ -43,7 +44,6 @@
         "webpack-node-externals": "^1.5.4"
     },
     "dependencies": {
-        "electron": "^2.0.0",
         "multicast-dns": "git+https://github.com/webarchymeta/multicast-dns.git",
         "node-ipc": "^8.9.2"
     }
