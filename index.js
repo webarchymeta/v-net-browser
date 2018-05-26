@@ -17,6 +17,13 @@ const
         refresh_seconds: refresh_seconds
     });
 
+if (config.production_mode && config.packaged) {
+    const cdir = path.dirname(process.execPath);
+    if (process.cwd() !== cdir) {
+        process.chdir(cdir);
+    }
+}
+
 let tray = null;
 let mainEntry = undefined;
 
