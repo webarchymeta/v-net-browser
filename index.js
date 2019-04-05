@@ -28,14 +28,18 @@ let tray = null;
 let mainEntry = undefined;
 
 if (!process.env.PRODUCTION_MODE) {
-    const shouldQuit = app.makeSingleInstance((argv, wkdir) => {
-        if (tray) {
-
-        }
-    });
-    if (shouldQuit) {
+    const gotTheLock = app.requestSingleInstanceLock();
+    if (!gotTheLock) {
         app.quit();
         return;
+    } else {
+        app.on('second-instance', (cmdl, wkdir) => {
+            if (mainWindow) {
+                if (mainWindow.isMinimized())
+                    mainWindow.restore();
+                mainWindow.focus();
+            }
+        });
     }
 }
 

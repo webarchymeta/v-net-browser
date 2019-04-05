@@ -55,7 +55,9 @@ const webviewEvents = {
     'destroyed': 'onDestroyed',
     'ipc-message': 'onIpcMessage',
     'console-message': 'onConsoleMessage',
-    'new-window': 'onOpenNewWindow'
+    'new-window': 'onOpenNewWindow',
+    'enter-html-full-screen': 'onEnterFullscreen',
+    'leave-html-full-screen': 'onLeaveFullscreen'
 };
 
 function resize() {
@@ -93,8 +95,9 @@ const BrowserPage = CreateReactClass({
     },
 
     navigateTo: function (l) {
-        var webview = this.refs.webview
-        webview.setAttribute('src', l)
+        var webview = this.refs.webview;
+        webview.setAttribute('src', l);
+        //webview.loadURL(l);
     },
 
     onPageSearch: function (query) {
@@ -108,7 +111,8 @@ const BrowserPage = CreateReactClass({
     render: function () {
         return <div id="browser-page" className={this.props.isActive ? 'visible' : 'hidden'}>
             <BrowserPageSearch isActive={this.props.page.isSearching} onPageSearch={this.onPageSearch} />
-            <webview ref="webview" preload="./preload/main.js" onContextMenu={e => this.props.onContextMenu(e, this.props.page, this.props.pageIndex)} />
+            <webview ref="webview" preload="./preload/main.js" plugins="true" autosize="true"
+                onContextMenu={e => this.props.onContextMenu(e, this.props.page, this.props.pageIndex)} ></webview>
             <BrowserPageStatus page={this.props.page} />
         </div>
     }

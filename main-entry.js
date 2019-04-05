@@ -83,19 +83,25 @@ const startup = () => {
             });
         });
 
+        ipcMain.on('full-screen-mode', (e, d) => {
+            mainWindow.setFullScreen(d.on);
+        });
+
         const createWindow = initBounds => {
             const wopts = {
                 width: initBounds ? initBounds.width : 1530,
                 height: initBounds ? initBounds.height : 920,
                 frame: false,
-                icon: __dirname + '/images/v-net-browser.png'
+                icon: __dirname + '/images/v-net-browser.png',
+                webPreferences: {
+                    nodeIntegration: true
+                }
             };
             if (initBounds) {
                 wopts.x = initBounds.loc_x;
                 wopts.y = initBounds.loc_y;
             }
             mainWindow = new BrowserWindow(wopts);
-
             mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
             mainWindow.webContents.on('did-finish-load', () => {
                 const copts = {

@@ -381,6 +381,12 @@ const BrowserChrome = CreateReactClass({
                     this.setState(this.state);
                 }
             }
+        },
+        onEnterFullscreen: function (e, page, pageIndex) {
+            ipcRenderer.send('full-screen-mode', { on: true });
+        },
+        onLeaveFullscreen: function (e, page, pageIndex) {
+            ipcRenderer.send('full-screen-mode', { on: false });
         }
     },
     render: function () {
