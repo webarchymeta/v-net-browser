@@ -77,18 +77,21 @@ const BrowserPage = CreateReactClass({
         for (var k in webviewEvents) {
             this.refs.webview.addEventListener(k, webviewHandler(this, webviewEvents[k]));
         }
-
         this.refs.webview.addEventListener('will-navigate', (e, url) => { this.props.onWillNavigate(e, url, this.props.page, this.props.pageIndex); });
         this.refs.webview.addEventListener('did-navigate', (e, url) => { this.props.onDidNavigate(e, url, this.props.page, this.props.pageIndex); });
-
+        this.refs.webview.addEventListener('context-menu', e => {
+            this.props.onContextMenu(e, this.props.page, this.props.pageIndex);
+        });
         setTimeout(resize, 1);
         // set location, if given
         if (this.props.page.location) {
             this.navigateTo(this.props.page.location);
         }
         Array.prototype.forEach.call(document.querySelectorAll('webview'), function (webview) {
-            webview && webview.setAttribute('plugins', 'plugins');
-        })
+            if (webview) {
+                webview.setAttribute('plugins', 'plugins');
+            }
+        });
     },
     componentWillUnmount: function () {
         window.removeEventListener('resize', resize)
@@ -111,8 +114,7 @@ const BrowserPage = CreateReactClass({
     render: function () {
         return <div id="browser-page" className={this.props.isActive ? 'visible' : 'hidden'}>
             <BrowserPageSearch isActive={this.props.page.isSearching} onPageSearch={this.onPageSearch} />
-            <webview ref="webview" preload="./preload/main.js" plugins="true" autosize="true"
-                onContextMenu={e => this.props.onContextMenu(e, this.props.page, this.props.pageIndex)} ></webview>
+            <webview ref="webview" preload="./preload/main.js" plugins="true" autosize="true"></webview>
             <BrowserPageStatus page={this.props.page} />
         </div>
     }

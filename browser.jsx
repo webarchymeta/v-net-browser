@@ -355,16 +355,17 @@ const BrowserChrome = CreateReactClass({
         },
         onContextMenu: function (e, page, pageIndex) {
             let pageIndx = typeof pageIndex === 'number' ? pageIndex : undefined;
-            window.currentContextMenuPos = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+            window.currentContextMenuPos = { x: e.params.x, y: e.params.y };
             this.getWebView(pageIndx).send('get-contextmenu-data', window.currentContextMenuPos);
         },
         onIpcMessage: function (e, page) {
             if (e.channel == 'status') {
                 page.statusText = e.args[0];
                 this.setState(this.state);
-            }
-            else if (e.channel == 'contextmenu-data') {
-                this.webviewContextMenu(e.args[0]);
+            } else {
+                if (e.channel == 'contextmenu-data') {
+                    this.webviewContextMenu(e.args[0]);
+                }
             }
         },
         onOpenNewWindow: function (e, page, pageIndex) {

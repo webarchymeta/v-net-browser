@@ -18,7 +18,7 @@ body {
 }
 
 #browser-chrome>.browser-container>#browser-page {
-  height: 100%;
+  height: calc(100% - 5px);
 }
 
 #browser-chrome>.browser-container>#browser-page>webview {
@@ -31,11 +31,12 @@ body {
 }
 
 .runtime-context {
-  height: 25px;
-  padding: 3px 10px;
+  height: 17px;
+  padding: 5px 10px;
   background: linear-gradient(to bottom, #ddd 90%, #bbb);
   color: #555;
   font-size: smaller;
+  line-height: 10px;
 }
 
 .runtime-context>table {

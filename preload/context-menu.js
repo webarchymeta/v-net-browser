@@ -4,7 +4,7 @@ function triggerMenu(data) {
     ipc.sendToHost('contextmenu-data', data);
 }
 
-ipc.on('get-contextmenu-data', function(pos) {
+ipc.on('get-contextmenu-data', function(s, pos) {
     var data = {
         x: pos.x,
         y: pos.y,

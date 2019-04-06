@@ -5,7 +5,6 @@ function setStatus(status) {
 }
 
 window.addEventListener('mouseover', function(e) {
-    // watch for mouseovers of anchor elements
     var el = e.target;
     window.__current_href = undefined;
     window.__current_img = undefined;

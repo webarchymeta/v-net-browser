@@ -94,7 +94,8 @@ const startup = () => {
                 frame: false,
                 icon: __dirname + '/images/v-net-browser.png',
                 webPreferences: {
-                    nodeIntegration: true
+                    nodeIntegration: true,
+                    webviewTag: true
                 }
             };
             if (initBounds) {
@@ -102,6 +103,7 @@ const startup = () => {
                 wopts.y = initBounds.loc_y;
             }
             mainWindow = new BrowserWindow(wopts);
+            //mainWindow.webContents.openDevTools();
             mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
             mainWindow.webContents.on('did-finish-load', () => {
                 const copts = {
