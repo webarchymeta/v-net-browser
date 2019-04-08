@@ -63,14 +63,20 @@ const client = function() {
                             results.push(r);
                         }
                         if (type === 'SRV') {
-                            if (a.data.target !== 'stopped' && !r.answers.find(_a => _a.target === a.data.target && _a.port === a.data.port)) {
-                                r.answers.push(a.data);
-                                if (wait_for_more) {
-                                    evtSink.emit('more', r);
+                            if (a.type === 'SRV') {
+                                if (a.data.target !== 'stopped' && !r.answers.find(_a => _a.target === a.data.target && _a.port === a.data.port)) {
+                                    r.answers.push(a.data);
+                                    if (wait_for_more) {
+                                        evtSink.emit('more', r);
+                                    }
+                                }
+                            } else {
+                                if (a.data && !r.answers.find(_a => _a == a.data)) {
+                                    r.answers.push(a.data);
                                 }
                             }
                         } else {
-                            if (a.data && !r.answers.find(_a => _a === a.data)) {
+                            if (a.data && !r.answers.find(_a => _a == a.data)) {
                                 r.answers.push(a.data);
                                 if (wait_for_more) {
                                     evtSink.emit('more', r);
