@@ -148,7 +148,7 @@ const client = function() {
                             let gw_ip = res.answers[0].data.target;
                             const port = res.answers[0].data.port;
                             if (gw_ip.indexOf(',') > -1) {
-                                gw_ip = gw_ip.substr(0, socks_ip.indexOf(','));
+                                gw_ip = gw_ip.substr(0, gw_ip.indexOf(','));
                             }
                             resolve({
                                 address: gw_ip,

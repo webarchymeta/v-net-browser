@@ -2,7 +2,7 @@
 
 const
     events = require('events'),
-    dns_client = require(__dirname + '/dns-client');
+    dns_client = require('./dns-client');
 
 const defer = () => {
     let resolve, reject;
@@ -23,7 +23,9 @@ const gateway_port = function(data) {
     self.name = data.name;
     self.descr = '';
     self.auth_required = false;
+    self.net_id;
     self.username;
+    self.netname;
     self.answers = [];
     self.started = false;
     self.serving = false;
@@ -41,16 +43,28 @@ const gateway_port = function(data) {
                     const str = Buffer.from(a).toString('utf8');
                     try {
                         const rec = JSON.parse(str);
-                        self.auth_required = rec.auth;
-                        self.descr = rec.descr;
+                        if (rec.nm) {
+                            self.net_id = rec.nid;
+                            self.username = rec.nm;
+                            self.netname = rec.nn;
+                        } else {
+                            self.auth_required = rec.auth;
+                            self.descr = rec.descr;
+                        }
                     } catch (ex) {
                         self.descr = str;
                     }
                 } else if (a instanceof String) {
                     try {
                         const rec = JSON.parse(a);
-                        self.auth_required = rec.auth;
-                        self.descr = rec.descr;
+                        if (rec.nm) {
+                            self.net_id = rec.nid;
+                            self.username = rec.nm;
+                            self.netname = rec.nn;
+                        } else {
+                            self.auth_required = rec.auth;
+                            self.descr = rec.descr;
+                        }
                     } catch (ex) {
                         self.descr = a;
                     }
@@ -58,8 +72,14 @@ const gateway_port = function(data) {
                     const str = a.toString('utf8');
                     try {
                         const rec = JSON.parse(str);
-                        self.auth_required = rec.auth;
-                        self.descr = rec.descr;
+                        if (rec.nm) {
+                            self.net_id = rec.nid;
+                            self.username = rec.nm;
+                            self.netname = rec.nn;
+                        } else {
+                            self.auth_required = rec.auth;
+                            self.descr = rec.descr;
+                        }
                     } catch (ex) {
                         self.descr = str;
                     }

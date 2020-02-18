@@ -12,8 +12,8 @@ const {
 const refresh_seconds = 10;
 
 const
-    config = require(__dirname + '/config.json'),
-    booter = new(require(__dirname + '/libs/bootstrapper'))({
+    config = require('./config.json'),
+    booter = new(require('./libs/bootstrapper'))({
         refresh_seconds: refresh_seconds
     });
 
@@ -34,10 +34,10 @@ if (!process.env.PRODUCTION_MODE) {
         return;
     } else {
         app.on('second-instance', (cmdl, wkdir) => {
-            if (mainWindow) {
-                if (mainWindow.isMinimized())
-                    mainWindow.restore();
-                mainWindow.focus();
+            if (global.mainWindow) {
+                if (global.mainWindow.isMinimized())
+                    global.mainWindow.restore();
+                global.mainWindow.focus();
             }
         });
     }
@@ -159,7 +159,7 @@ app.on('ready', () => {
                 gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
                     contextMenu.append(new MenuItem({
                         icon: gw.auth_required ? __dirname + '/images/green-locked-dot.png' : __dirname + '/images/green-dot.png',
-                        label: gw.name,
+                        label: gw.name + (gw.netname ? ' in [' + gw.netname + ']' : ''),
                         sublabel: gw.descr || ' ... ',
                         click: launcher.bind(gw)
                     }));
@@ -207,7 +207,7 @@ app.on('ready', () => {
             }.bind(this), 10000);
         });
     } else {
-        mainEntry = require(__dirname + '/main-entry');
+        mainEntry = require('./main-entry');
         mainEntry.startup();
     }
 });

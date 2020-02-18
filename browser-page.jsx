@@ -114,7 +114,7 @@ const BrowserPage = CreateReactClass({
     render: function () {
         return <div id="browser-page" className={this.props.isActive ? 'visible' : 'hidden'}>
             <BrowserPageSearch isActive={this.props.page.isSearching} onPageSearch={this.onPageSearch} />
-            <webview ref="webview" preload="./preload/main.js" plugins="true" autosize="true"></webview>
+            <webview ref="webview" preload="./preload/main.js" plugins="true" autosize="true" allowpopups="true"></webview>
             <BrowserPageStatus page={this.props.page} />
         </div>
     }

@@ -4,14 +4,14 @@ const {
     ipcMain
 } = require('electron'),
     path = require('path'),
-    dns_client = require(__dirname + '/libs/dns-client'),
-    app_register = require(__dirname + '/libs/app-register'),
-    mainDbApi = require(__dirname + '/libs/main-db-api'),
-    winStateUpdator = require(__dirname + '/libs/state-updater');
+    dns_client = require('./libs/dns-client'),
+    app_register = require('./libs/app-register'),
+    mainDbApi = require('./libs/main-db-api'),
+    winStateUpdator = require('./libs/state-updater');
+
+global.mainWindow = null;
 
 const mainWindowId = 'main-window';
-
-let mainWindow = null;
 let mainDB, stateUpdator;
 let gateway_resolve_task;
 
@@ -84,7 +84,7 @@ const startup = () => {
         });
 
         ipcMain.on('full-screen-mode', (e, d) => {
-            mainWindow.setFullScreen(d.on);
+            global.mainWindow.setFullScreen(d.on);
         });
 
         const createWindow = initBounds => {
@@ -102,10 +102,10 @@ const startup = () => {
                 wopts.x = initBounds.loc_x;
                 wopts.y = initBounds.loc_y;
             }
-            mainWindow = new BrowserWindow(wopts);
-            //mainWindow.webContents.openDevTools();
-            mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
-            mainWindow.webContents.on('did-finish-load', () => {
+            global.mainWindow = new BrowserWindow(wopts);
+            //global.mainWindow.webContents.openDevTools();
+            global.mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
+            global.mainWindow.webContents.on('did-finish-load', () => {
                 const copts = {
                     has_context: !!process.env.SOCKS5_ADDRESS
                 };
@@ -115,26 +115,26 @@ const startup = () => {
                     copts.socks5_address = process.env.SOCKS5_ADDRESS;
                     copts.socks5_port = process.env.SOCKS5_PORT;
                 }
-                mainWindow.webContents.send('runtime-context-update', copts);
+                global.mainWindow.webContents.send('runtime-context-update', copts);
             });
-            mainWindow.on('resize', () => {
+            global.mainWindow.on('resize', () => {
                 stateUpdator.updateWindowState(mainWindowId, {
-                    bounds: mainWindow.getBounds()
+                    bounds: global.mainWindow.getBounds()
                 })
             });
-            mainWindow.on('move', () => {
+            global.mainWindow.on('move', () => {
                 stateUpdator.updateWindowState(mainWindowId, {
-                    bounds: mainWindow.getBounds()
+                    bounds: global.mainWindow.getBounds()
                 })
             });
-            mainWindow.on('enter-full-screen', () => {
+            global.mainWindow.on('enter-full-screen', () => {
 
             });
-            mainWindow.on('leave-full-screen', () => {
+            global.mainWindow.on('leave-full-screen', () => {
 
             });
-            mainWindow.on('closed', () => {
-                mainWindow = null;
+            global.mainWindow.on('closed', () => {
+                global.mainWindow = null;
             });
         };
 

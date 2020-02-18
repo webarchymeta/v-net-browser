@@ -3,7 +3,7 @@
 const
     path = require('path'),
     fs = require('fs'),
-    sqlite = require(__dirname + '/../libs/sqlitejs');
+    sqlite = require('./sqlitejs/index');
 
 const dbfile = 'AppMainDB.db';
 

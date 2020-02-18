@@ -10,22 +10,6 @@ import BrowserPage from './browser-page.jsx';
 const { remote, ipcRenderer } = require('electron');
 const { Menu, MenuItem, clipboard } = remote;
 
-const ifaces = require('os').networkInterfaces();
-const subnets = [];
-Object.keys(ifaces).forEach(key => {
-    ifaces[key].forEach(ip => {
-        if (!ip.internal && 'ipv4' === ip.family.toLowerCase()) {
-            subnets.push(ip.address.substr(0, ip.address.lastIndexOf('.') + 1));
-        }
-    });
-});
-
-const mdns = new (require('multicast-dns'))({
-    port: 0,
-    subnets: subnets,
-    loopback: false
-});
-
 const urllib = require('url');
 
 const onenet_gateway_url_pattern = /\.gw-master\.local(\/.*)?\s*$/i;
