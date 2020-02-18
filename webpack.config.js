@@ -20,7 +20,13 @@ module.exports = {
                 loader: 'babel-loader',
                 exclude: /(node_modules|bower_components)/,
                 query: {
-                    presets: ['env', 'react']
+                    presets: [
+                        ['@babel/preset-env', {
+                            "targets": {
+                                "chrome": "58"
+                            }
+                        }], '@babel/preset-react'
+                    ]
                 }
             }, {
                 test: /\.json$/,
