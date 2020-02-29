@@ -145,7 +145,7 @@ app.on('ready', () => {
     if (!process.env.PRODUCTION_MODE) {
         booter.update_ports().then(r => {
             last_update = (new Date()).getTime();
-            const getMenu = (gw_lst) => {
+            const getMenu = gw_lst => {
                 const contextMenu = new Menu();
                 contextMenu.append(new MenuItem({
                     icon: __dirname + '/images/blue-dot.png',
@@ -178,7 +178,7 @@ app.on('ready', () => {
             r.ports.forEach(gwp => {
                 gateway_ports.push(gwp);
             });
-            r.more.on('more', (gwp) => {
+            r.more.on('more', gwp => {
                 gateway_ports.push(gwp);
             });
             tray = new Tray(__dirname + '/images/main-icon.png');
@@ -194,7 +194,7 @@ app.on('ready', () => {
                     tray.popUpContextMenu();
                 }
             });
-            tray.on('right-click', (e) => {
+            tray.on('right-click', e => {
                 e.preventDefault();
             });
             tray.setToolTip('V-NET Trans-LAN Browser');

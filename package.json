@@ -23,7 +23,7 @@
         "babel-loader": "^8.0.6",
         "create-react-class": "^15.6.3",
         "css-loader": "^3.4.2",
-        "electron": "^8.0.1",
+        "electron": "^8.0.2",
         "file-loader": "^5.0.2",
         "grunt": "^1.0.4",
         "grunt-contrib-concat": "^1.0.1",

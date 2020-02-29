@@ -23,8 +23,8 @@ const gateway_port = function(data) {
     self.name = data.name;
     self.descr = '';
     self.auth_required = false;
-    self.net_id;
-    self.username;
+    self.gid;
+    self.aid;
     self.netname;
     self.answers = [];
     self.started = false;
@@ -43,9 +43,9 @@ const gateway_port = function(data) {
                     const str = Buffer.from(a).toString('utf8');
                     try {
                         const rec = JSON.parse(str);
-                        if (rec.nm) {
-                            self.net_id = rec.nid;
-                            self.username = rec.nm;
+                        if (rec.gid) {
+                            self.gid = rec.gid;
+                            self.aid = rec.aid;
                             self.netname = rec.nn;
                         } else {
                             self.auth_required = rec.auth;
@@ -57,9 +57,9 @@ const gateway_port = function(data) {
                 } else if (a instanceof String) {
                     try {
                         const rec = JSON.parse(a);
-                        if (rec.nm) {
-                            self.net_id = rec.nid;
-                            self.username = rec.nm;
+                        if (rec.gid) {
+                            self.gid = rec.gid;
+                            self.aid = rec.aid;
                             self.netname = rec.nn;
                         } else {
                             self.auth_required = rec.auth;
@@ -72,9 +72,9 @@ const gateway_port = function(data) {
                     const str = a.toString('utf8');
                     try {
                         const rec = JSON.parse(str);
-                        if (rec.nm) {
-                            self.net_id = rec.nid;
-                            self.username = rec.nm;
+                        if (rec.gid) {
+                            self.gid = rec.gid;
+                            self.aid = rec.aid;
                             self.netname = rec.nn;
                         } else {
                             self.auth_required = rec.auth;
@@ -117,7 +117,7 @@ const api = function(opts) {
 
     self.is_loading = () => loading;
 
-    self.update_ports = (force_refresh) => {
+    self.update_ports = force_refresh => {
         const now = new Date();
         if (!force_refresh && last_update && (now.getTime() - last_update) < refresh_seconds * 1000) {
             return Promise.resolve({
