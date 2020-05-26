@@ -37,7 +37,7 @@ const gateway_port = function(data) {
                     targets: a.target.split(',').filter(t => !!t.trim()).map(t => t.trim()),
                     port: a.port
                 });
-                self.serving = self.answers[0].targets[0] !== 'stopped';
+                //self.serving = self.answers[0].targets[0] !== 'stopped';
             } else {
                 if (a instanceof Uint8Array) {
                     const str = Buffer.from(a).toString('utf8');
@@ -48,6 +48,19 @@ const gateway_port = function(data) {
                             self.aid = rec.aid;
                             self.netname = rec.nn;
                         } else {
+                            const ss = rec.ss ? rec.ss.split(':') : undefined;
+                            if (!ss) {
+                                self.active = a.started;
+                                self.started = a.started;
+                                self.serving = self.answers[0].targets[0] !== 'stopped';
+                                if (self.serving && !self.started) {
+                                    self.started = true;
+                                }
+                            } else {
+                                self.active = ss[0] === '1';
+                                self.started = ss[1] === '1';
+                                self.serving = ss[2] === '1';
+                            }
                             self.auth_required = rec.auth;
                             self.descr = rec.descr;
                         }
@@ -62,6 +75,19 @@ const gateway_port = function(data) {
                             self.aid = rec.aid;
                             self.netname = rec.nn;
                         } else {
+                            const ss = rec.ss ? rec.ss.split(':') : undefined;
+                            if (!ss) {
+                                self.active = a.started;
+                                self.started = a.started;
+                                self.serving = self.answers[0].targets[0] !== 'stopped';
+                                if (self.serving && !self.started) {
+                                    self.started = true;
+                                }
+                            } else {
+                                self.active = ss[0] === '1';
+                                self.started = ss[1] === '1';
+                                self.serving = ss[2] === '1';
+                            }
                             self.auth_required = rec.auth;
                             self.descr = rec.descr;
                         }
@@ -77,6 +103,19 @@ const gateway_port = function(data) {
                             self.aid = rec.aid;
                             self.netname = rec.nn;
                         } else {
+                            const ss = rec.ss ? rec.ss.split(':') : undefined;
+                            if (!ss) {
+                                self.active = a.started;
+                                self.started = a.started;
+                                self.serving = self.answers[0].targets[0] !== 'stopped';
+                                if (self.serving && !self.started) {
+                                    self.started = true;
+                                }
+                            } else {
+                                self.active = ss[0] === '1';
+                                self.started = ss[1] === '1';
+                                self.serving = ss[2] === '1';
+                            }
                             self.auth_required = rec.auth;
                             self.descr = rec.descr;
                         }

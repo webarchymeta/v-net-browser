@@ -95,6 +95,7 @@ const startup = () => {
                 icon: __dirname + '/images/v-net-browser.png',
                 webPreferences: {
                     nodeIntegration: true,
+                    enableRemoteModule: true,
                     webviewTag: true
                 }
             };
@@ -141,7 +142,7 @@ const startup = () => {
         const run = () => {
             mainDB = new mainDbApi({
                 home: app.getPath('appData'),
-                path: app.getName() + '/databases'
+                path: app.getName() + '/databases-2'
             });
             mainDB.open().then(() => {
                 stateUpdator = new winStateUpdator(mainDB);

@@ -45,7 +45,7 @@ if (!process.env.PRODUCTION_MODE) {
 
 const launcher = function(m, w, e) {
     const gw = this;
-    if (gw.started)
+    if (!gw.serving)
         return;
     if (gw.auth_required) {
         dialog.showErrorBox('Stop', 'The current browser does not support going through user authenticated V-NET gateway port!');
