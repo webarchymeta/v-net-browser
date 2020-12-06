@@ -4,7 +4,7 @@ const {
     ipcMain
 } = require('electron'),
     path = require('path'),
-    dns_client = require('./libs/dns-client'),
+    mdns_client = require('./libs/mdns-client'),
     app_register = require('./libs/app-register'),
     mainDbApi = require('./libs/main-db-api'),
     winStateUpdator = require('./libs/state-updater');
@@ -18,8 +18,9 @@ let gateway_resolve_task;
 if (process.env.SOCKS5_ADDRESS) {
     const onenet_port_url_pattern = /\.gw-port\.local\s*$/i;
     if (process.env.SOCKS5_ADDRESS.match(onenet_port_url_pattern)) {
-        const dns = new(requie(__dirname + '/libs/dns-client'))();
+        const dns = new (require('./libs/mdns-client'))();
         gateway_resolve_task = dns.find(process.env.SOCKS5_ADDRESS).then(result => {
+            //incomplete, mostly unused ...
             if (result) {
                 app.commandLine.appendSwitch('proxy-server', 'socks5://' + result.socks5_address + ':' + result.socks5_port);
                 if (!process.env.SOCKS5_LOCAL_DNS) {
@@ -69,7 +70,7 @@ const startup = () => {
         }
 
         ipcMain.on('mdns-query', (e, q) => {
-            const dns = new dns_client();
+            const dns = new mdns_client();
             dns.find(q.hostname, 'SRV').then(resp => {
                 e.sender.send('mdns-query-ack', {
                     ok: true,

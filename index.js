@@ -13,7 +13,7 @@ const refresh_seconds = 10;
 
 const
     config = require('./config.json'),
-    booter = new(require('./libs/bootstrapper'))({
+    booter = new (require('./libs/bootstrapper'))({
         refresh_seconds: refresh_seconds
     });
 
@@ -43,7 +43,7 @@ if (!process.env.PRODUCTION_MODE) {
     }
 }
 
-const launcher = function(m, w, e) {
+const launcher = function (m, w, e) {
     const gw = this;
     if (!gw.serving)
         return;
@@ -59,8 +59,9 @@ const launcher = function(m, w, e) {
     };
     if (gw.name) {
         child_opts.env.CONTEXT_TITLE = gw.name;
-        child_opts.env.SOCKS5_ADDRESS = gw.answers[0].targets[0];
-        child_opts.env.SOCKS5_PORT = gw.answers[0].port;
+        child_opts.env.SOCKS5_ADDRESS = gw.ip;
+        child_opts.env.SOCKS5_ADDRESS6 = gw.ip6;
+        child_opts.env.SOCKS5_PORT = gw.port;
     };
     const keys = Object.keys(process.env);
     keys.forEach(k => {
@@ -79,7 +80,7 @@ const launcher = function(m, w, e) {
     gw.proc.on('error', err => {
         console.log(err);
     });
-    gw.proc.on('exit', function(code, sig) {
+    gw.proc.on('exit', function (code, sig) {
         this.started = false;
         this.proc = undefined;
         console.log(`process exited with code ${code}, sig: ${sig}`);
@@ -117,21 +118,7 @@ const updater = () => {
             }
             gateway_ports.push(gwp);
         });
-        if (r.more) {
-            r.more.on('more', function(gwp) {
-                const old = this.find(p => p.name === gwp.name);
-                if (old) {
-                    gwp.proc = old.proc;
-                    gwp.started = old.started;
-                }
-                gateway_ports.push(gwp);
-            }.bind(old_ports));
-        }
-        setTimeout(function() {
-            if (this.more) {
-                this.more.removeAllListeners('more');
-                this.more = undefined;
-            }
+        setTimeout(function () {
             booter.close();
         }.bind(r), 10000);
     });
@@ -157,6 +144,8 @@ app.on('ready', () => {
                     type: 'separator'
                 }));
                 gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
+                    //@@
+                    console.log(gw);
                     contextMenu.append(new MenuItem({
                         icon: gw.auth_required ? __dirname + '/images/green-locked-dot.png' : __dirname + '/images/green-dot.png',
                         label: gw.name + (gw.netname ? ' in [' + gw.netname + ']' : ''),
@@ -178,9 +167,6 @@ app.on('ready', () => {
             r.ports.forEach(gwp => {
                 gateway_ports.push(gwp);
             });
-            r.more.on('more', gwp => {
-                gateway_ports.push(gwp);
-            });
             tray = new Tray(__dirname + '/images/main-icon.png');
             tray.on('click', (e, b) => {
                 const now = (new Date()).getTime();
@@ -198,11 +184,7 @@ app.on('ready', () => {
                 e.preventDefault();
             });
             tray.setToolTip('V-NET Trans-LAN Browser');
-            setTimeout(function() {
-                if (this.more) {
-                    this.more.removeAllListeners('more');
-                    this.more = undefined;
-                }
+            setTimeout(function () {
                 booter.close();
             }.bind(this), 10000);
         });

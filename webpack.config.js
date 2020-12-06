@@ -16,32 +16,40 @@ module.exports = {
     },
     module: {
         rules: [{
-                test: /\.(js|jsx)$/,
+            test: /\.(js|jsx)$/,
+            exclude: /(node_modules|bower_components)/,
+            use: [{
                 loader: 'babel-loader',
-                exclude: /(node_modules|bower_components)/,
-                query: {
+                options: {
                     presets: [
                         ['@babel/preset-env', {
                             "targets": {
-                                "chrome": "58"
+                                "chrome": "83",
+                                "firefox": "78"
                             }
                         }], '@babel/preset-react'
                     ]
                 }
-            }, {
-                test: /\.json$/,
-                loader: 'json'
-            }, {
-                test: /\.less$/,
-                loader: 'style-loader!css-loader!less-loader'
-            }, // use ! to chain loaders
-            {
-                test: /\.css$/,
-                loader: 'style-loader!css-loader'
-            }, {
-                test: /\.(png|jpg|woff|woff2|eot|ttf|svg)$/,
-                loader: 'url-loader?limit=8192'
-            } // inline base64 URLs for <=8k images, direct URLs for the rest
+            }]
+        }, {
+            test: /\.json$/,
+            use: ['json-loader'],
+        }, {
+            test: /\.less$/,
+            use: ['style-loader', 'css-loader', 'less-loader']
+        }, // use ! to chain loaders
+        {
+            test: /\.css$/,
+            use: ['style-loader', 'css-loader']
+        }, {
+            test: /\.(png|jpg|woff|woff2|eot|ttf|svg)$/,
+            use: [{
+                loader: 'url-loader',
+                options: {
+                    limit: 8192
+                }
+            }]
+        } // inline base64 URLs for <=8k images, direct URLs for the rest
         ]
     },
     plugins: []
