@@ -97,6 +97,7 @@ const startup = () => {
                 webPreferences: {
                     nodeIntegration: true,
                     enableRemoteModule: true,
+                    contextIsolation: false,
                     webviewTag: true
                 }
             };

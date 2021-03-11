@@ -144,8 +144,6 @@ app.on('ready', () => {
                     type: 'separator'
                 }));
                 gw_lst.sort((a, b) => a.name > b.name ? 1 : -1).filter(gw => gw.serving).forEach(gw => {
-                    //@@
-                    console.log(gw);
                     contextMenu.append(new MenuItem({
                         icon: gw.auth_required ? __dirname + '/images/green-locked-dot.png' : __dirname + '/images/green-dot.png',
                         label: gw.name + (gw.netname ? ' in [' + gw.netname + ']' : ''),
