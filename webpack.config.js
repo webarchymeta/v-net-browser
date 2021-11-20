@@ -24,8 +24,8 @@ module.exports = {
                     presets: [
                         ['@babel/preset-env', {
                             "targets": {
-                                "chrome": "89",
-                                "firefox": "86"
+                                "chrome": "94",
+                                "firefox": "94"
                             }
                         }], '@babel/preset-react'
                     ]

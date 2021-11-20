@@ -9,6 +9,8 @@ const {
     mainDbApi = require('./libs/main-db-api'),
     winStateUpdator = require('./libs/state-updater');
 
+const remote_main = require('@electron/remote/main');
+
 global.mainWindow = null;
 
 const mainWindowId = 'main-window';
@@ -105,9 +107,12 @@ const startup = () => {
                 wopts.x = initBounds.loc_x;
                 wopts.y = initBounds.loc_y;
             }
+            remote_main.initialize();
             global.mainWindow = new BrowserWindow(wopts);
             //global.mainWindow.webContents.openDevTools();
-            global.mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
+            remote_main.enable(global.mainWindow.webContents);
+            //global.mainWindow.loadURL('file://' + path.join(__dirname, 'browser.html'));
+            global.mainWindow.loadFile(path.join(__dirname, 'browser.html'));
             global.mainWindow.webContents.on('did-finish-load', () => {
                 const copts = {
                     has_context: !!process.env.SOCKS5_ADDRESS
@@ -160,9 +165,11 @@ const startup = () => {
         if (!process.env.PRODUCTION_MODE) {
             app.on('ready', () => {
                 app.on('window-all-closed', windowAllClosed);
-                if (app_register.regist(app)) {
-                    run();
-                }
+                app_register.regist(app).then(ok => {
+                    if (ok) {
+                        run();
+                    }
+                })
             });
         } else {
             run();

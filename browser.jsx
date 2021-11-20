@@ -7,7 +7,8 @@ import BrowserTabs from './browser-tabs.jsx';
 import BrowserNavbar from './browser-navbar.jsx';
 import BrowserPage from './browser-page.jsx';
 
-const { remote, ipcRenderer } = require('electron');
+const { ipcRenderer } = require('electron');
+const remote = require('@electron/remote');
 const { Menu, MenuItem, clipboard } = remote;
 
 const urllib = require('url');

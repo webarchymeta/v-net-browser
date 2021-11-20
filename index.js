@@ -78,7 +78,7 @@ const launcher = function (m, w, e) {
         }
     }
     gw.proc.on('error', err => {
-        console.log(err);
+        console.log('error', err);
     });
     gw.proc.on('exit', function (code, sig) {
         this.started = false;
@@ -87,10 +87,10 @@ const launcher = function (m, w, e) {
     }.bind(gw));
     if (gw.proc.stdout) {
         gw.proc.stdout.on('data', (data) => {
-            console.log(`local-app: ${data}`);
+            console.log(`local-app out: ${data}`);
         });
         gw.proc.stderr.on('data', (data) => {
-            console.error(`local-app: ${data}`);
+            console.error(`local-app err: ${data}`);
         });
     }
     gw.started = true;
