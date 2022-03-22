@@ -24,7 +24,7 @@
         "babel-loader": "^8.2.3",
         "create-react-class": "^15.7.0",
         "css-loader": "^6.5.1",
-        "electron": "^15.3.2",
+        "electron": "^15.3.5",
         "file-loader": "^6.2.0",
         "grunt": "^1.4.1",
         "grunt-contrib-concat": "^2.0.0",
